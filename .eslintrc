@@ -2,7 +2,7 @@
   "parser": "@typescript-eslint/parser",
   "extends": [
     "plugin:prettier/recommended",
-    "prettier/react",
+    "prettier",
     "plugin:@typescript-eslint/eslint-recommended"
   ],
   "env": {
