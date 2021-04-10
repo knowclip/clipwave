@@ -1,10 +1,11 @@
-import React from 'react'
+import React, { useRef } from 'react'
 
-import { ExampleComponent } from 'clipwave'
+import { useWaveform, Waveform } from 'clipwave'
 import 'clipwave/dist/index.css'
 
 const App = () => {
-  return <ExampleComponent text="Create React Library Example 😄" />
+  const waveform = useWaveform({} as any, {})
+  return <Waveform waveform={waveform} images={[]} playerRef={useRef(null)} />
 }
 
 export default App

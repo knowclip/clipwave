@@ -1,10 +1,12 @@
-import * as React from 'react'
-import styles from './styles.module.css'
+import Waveform from './Waveform'
 
-interface Props {
-  text: string
-}
+export { Waveform }
 
-export const ExampleComponent = ({ text }: Props) => {
-  return <div className={styles.test}>Example Component: {text}</div>
-}
+export * from './WaveformState'
+export * from './WaveformEvent'
+export * from './utils'
+export * from './utils/calculateRegions'
+
+export { usePlayButtonSync } from './usePlayButtonSync'
+export { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
+export { useWaveform } from './useWaveform'
