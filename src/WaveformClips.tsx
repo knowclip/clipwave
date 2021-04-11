@@ -9,22 +9,15 @@ import {
 import { getRegionEnd } from './utils/calculateRegions'
 import { GetWaveformItem, MAX_WAVEFORM_VIEWPORT_WIDTH } from './useWaveform'
 import { WaveformClip } from './WaveformClipsPrimaryClip'
+import { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
 
-export type ClipClickDataProps =
-  | {
-      'data-clip-id': string
-      'data-clip-start': number
-      'data-clip-end': number
-      'data-region-index': number
-      'data-clip-is-highlighted'?: number
-    }
-  | {
-      'data-clip-id': string
-      'data-clip-start': number
-      'data-clip-end': number
-      'data-region-index': number
-      'data-track-offset-y': number
-    }
+export type ClipClickDataProps = {
+  'data-clip-id': string
+  'data-clip-start': number
+  'data-clip-end': number
+  'data-region-index': number
+  'data-clip-is-highlighted'?: number
+}
 
 type TouchingClipsGroup = {
   clips: PrimaryClipDisplaySpecs[]
@@ -48,90 +41,90 @@ function ClipsBase({
   regions,
   highlightedClipId,
   height,
-  state: { pixelsPerSecond, viewBoxStartMs }
+  state: { pixelsPerSecond, viewBoxStartMs },
+  renderSecondaryClip
 }: {
   getItem: GetWaveformItem
   regions: WaveformRegion[]
   highlightedClipId: string | null
   height: number
   state: WaveformState
+  renderSecondaryClip?: (specs: SecondaryClipDisplayProps) => ReactNode
 }) {
   let highlightedClipDisplay: ReactNode
 
-  const acc: {
-    primary: {
-      clips: PrimaryClipDisplaySpecs[]
-      slots: Array<string | null>
-    }[]
-    secondary: SecondaryClipDisplaySpecs[]
-  } = { primary: [{ clips: [], slots: [] }], secondary: [] }
-  const { primary } = useMemo(
-    () =>
-      reduceWhile(
-        regions,
-        acc,
-        (region) =>
-          region.start <=
-          viewBoxStartMs +
-            pixelsToMs(MAX_WAVEFORM_VIEWPORT_WIDTH, pixelsPerSecond),
-        (acc, region, regionIndex) => {
-          const { primary, secondary } = acc
-          if (getRegionEnd(regions, regionIndex) < viewBoxStartMs) {
-            return acc
-          }
-
-          const lastGroup: TouchingClipsGroup = primary[primary.length - 1]
-          const { clips, slots } = lastGroup
-
-          const currentlyOverlapping = region.itemIds.length
-          if (!currentlyOverlapping) {
-            if (!lastGroup || lastGroup.clips.length)
-              primary.push({
-                clips: [],
-                slots: []
-              })
-            return acc
-          }
-
-          slots.forEach((slot, i) => {
-            if (!region.itemIds.some((id) => id === slot)) {
-              slots[i] = null
-            }
-          })
-
-          const startingNow = region.itemIds.flatMap((id) => {
-            const clip = getItem(id)
-            return region.start === clip.start ? clip : []
-          })
-
-          startingNow.forEach((clip) => {
-            if (clip.clipwaveType === 'Secondary') {
-              secondary.push({
-                clip,
-                region,
-                regionIndex
-              })
-              return
-            }
-
-            const emptySlot = slots.findIndex((id) => !id)
-            const slotIndex = emptySlot === -1 ? slots.length : emptySlot
-            slots[slotIndex] = clip.id
-
-            const specs = {
-              clip,
-              region,
-              regionIndex,
-              level: slotIndex
-            }
-            clips.push(specs)
-          })
-
+  const { primary, secondary } = useMemo(() => {
+    const acc: {
+      primary: {
+        clips: PrimaryClipDisplaySpecs[]
+        slots: Array<string | null>
+      }[]
+      secondary: SecondaryClipDisplaySpecs[]
+    } = { primary: [{ clips: [], slots: [] }], secondary: [] }
+    return reduceWhile(
+      regions,
+      acc,
+      (region) =>
+        region.start <=
+        viewBoxStartMs +
+          pixelsToMs(MAX_WAVEFORM_VIEWPORT_WIDTH, pixelsPerSecond),
+      (acc, region, regionIndex) => {
+        const { primary, secondary } = acc
+        if (getRegionEnd(regions, regionIndex) < viewBoxStartMs) {
           return acc
         }
-      ),
-    [pixelsPerSecond, regions, viewBoxStartMs, getItem]
-  )
+
+        const lastGroup: TouchingClipsGroup = primary[primary.length - 1]
+        const { clips, slots } = lastGroup
+
+        const currentlyOverlapping = region.itemIds.length
+        if (!currentlyOverlapping) {
+          if (!lastGroup || lastGroup.clips.length)
+            primary.push({
+              clips: [],
+              slots: []
+            })
+          return acc
+        }
+
+        slots.forEach((slot, i) => {
+          if (!region.itemIds.some((id) => id === slot)) {
+            slots[i] = null
+          }
+        })
+
+        const startingNow = region.itemIds.flatMap((id) => {
+          const clip = getItem(id)
+          return region.start === clip.start ? clip : []
+        })
+
+        startingNow.forEach((clip) => {
+          if (clip.clipwaveType === 'Secondary') {
+            secondary.push({
+              clip,
+              region,
+              regionIndex
+            })
+            return
+          }
+
+          const emptySlot = slots.findIndex((id) => !id)
+          const slotIndex = emptySlot === -1 ? slots.length : emptySlot
+          slots[slotIndex] = clip.id
+
+          const specs = {
+            clip,
+            region,
+            regionIndex,
+            level: slotIndex
+          }
+          clips.push(specs)
+        })
+
+        return acc
+      }
+    )
+  }, [regions, viewBoxStartMs, pixelsPerSecond, getItem])
 
   return (
     <g>
@@ -156,6 +149,17 @@ function ClipsBase({
             return null
           } else return display
         })
+      )}
+      {useMemo(
+        () =>
+          renderSecondaryClip &&
+          secondary.map((clipSpecs) =>
+            renderSecondaryClip({
+              ...clipSpecs,
+              pixelsPerSecond
+            })
+          ),
+        [secondary, renderSecondaryClip, pixelsPerSecond]
       )}
       {highlightedClipDisplay}
     </g>

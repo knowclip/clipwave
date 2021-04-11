@@ -25,7 +25,6 @@ export interface SecondaryClip {
   id: string
   start: number
   end: number
-  text: string[]
 }
 
 export type WaveformRegion = {

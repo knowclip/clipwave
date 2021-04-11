@@ -24,11 +24,12 @@ import {
   WaveformDragOf,
   WaveformDragStretch
 } from './WaveformEvent'
-import { SecondaryClip, WaveformItem, WaveformRegion } from './WaveformState'
+import { WaveformItem } from './WaveformState'
 import css from './Waveform.module.scss'
 import { getClipRectProps } from './getClipRectProps'
 import { Clips } from './WaveformClips'
 import { getFinalWaveformDragAction } from './getFinalWaveformDragAction'
+import { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
 
 type WaveformEventHandlers = {
   onWaveformDrag?: (event: WaveformDragOf<WaveformDragCreate>) => void
@@ -38,18 +39,16 @@ type WaveformEventHandlers = {
   onMouseWheel?: React.WheelEventHandler
 }
 
-type RenderSecondaryClip = (options: {
-  clip: SecondaryClip
-  region: WaveformRegion
-  regionIndex: number
-  pixelsPerSecond: number
-}) => ReactNode
+export type RenderSecondaryClip = (
+  options: SecondaryClipDisplayProps
+) => ReactNode
 
 export default function Waveform({
   waveform,
   images,
   playerRef,
   height = WAVEFORM_HEIGHT,
+  renderSecondaryClip,
   ...waveformEventHandlers
 }: {
   waveform: WaveformInterface
@@ -58,9 +57,6 @@ export default function Waveform({
   height?: number
   renderSecondaryClip?: RenderSecondaryClip
 } & WaveformEventHandlers) {
-  // const height = WAVEFORM_HEIGHT
-  // + subtitles.totalTracksCount * SUBTITLES_CHUNK_HEIGHT
-
   const {
     viewBoxStartMs,
     durationSeconds,
@@ -93,7 +89,7 @@ export default function Waveform({
       ref={waveform.svgRef}
       viewBox={getViewBoxString(
         msToPixels(viewBoxStartMs, pixelsPerSecond),
-        WAVEFORM_HEIGHT
+        height
       )}
       height={height}
       style={{ background: 'gray', alignSelf: 'flex-start', width: '100%' }}
@@ -115,6 +111,7 @@ export default function Waveform({
           highlightedClipId={highlightedClipId}
           height={height}
           state={waveform.state}
+          renderSecondaryClip={renderSecondaryClip}
         />
         {pendingAction && (
           <PendingWaveformItem

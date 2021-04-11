@@ -57,10 +57,6 @@ export function useWaveformMediaTimeUpdate(
         !media.paused &&
         currentSelection?.item &&
         newMilliseconds >= currentSelection.item.end
-      console.log({
-        loopImminent,
-        currentSelection: currentSelection?.item.id
-      })
       if (loopImminent && currentSelection) {
         media.currentTime = msToSeconds(currentSelection.item.start)
         return dispatch({
