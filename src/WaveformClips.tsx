@@ -1,45 +1,56 @@
 import React, { ReactNode, useMemo } from 'react'
-import cn from 'classnames'
-import { getClipRectProps } from './getClipRectProps'
-import { msToPixels, pixelsToMs, SELECTION_BORDER_MILLISECONDS } from './utils'
+import { pixelsToMs } from './utils'
 import {
-  Clip,
-  WaveformItem,
+  PrimaryClip,
+  SecondaryClip,
   WaveformRegion,
   WaveformState
 } from './WaveformState'
 import { getRegionEnd } from './utils/calculateRegions'
-import css from './Waveform.module.scss'
-import { MAX_WAVEFORM_VIEWPORT_WIDTH } from './useWaveform'
+import { GetWaveformItem, MAX_WAVEFORM_VIEWPORT_WIDTH } from './useWaveform'
+import { WaveformClip } from './WaveformClipsPrimaryClip'
 
-type ClipClickDataProps = {
-  'data-clip-id': string
-  'data-clip-start': number
-  'data-clip-end': number
-  'data-region-index': number
-  'data-clip-is-highlighted'?: number
-}
+export type ClipClickDataProps =
+  | {
+      'data-clip-id': string
+      'data-clip-start': number
+      'data-clip-end': number
+      'data-region-index': number
+      'data-clip-is-highlighted'?: number
+    }
+  | {
+      'data-clip-id': string
+      'data-clip-start': number
+      'data-clip-end': number
+      'data-region-index': number
+      'data-track-offset-y': number
+    }
 
 type TouchingClipsGroup = {
-  clips: ClipDisplaySpecs[]
+  clips: PrimaryClipDisplaySpecs[]
   slots: Array<string | null>
 }
-type ClipDisplaySpecs = {
-  clip: Clip
+type PrimaryClipDisplaySpecs = {
+  clip: PrimaryClip
   region: WaveformRegion
   regionIndex: number
   level: number
 }
+type SecondaryClipDisplaySpecs = {
+  clip: SecondaryClip
+  region: WaveformRegion
+  regionIndex: number
+}
 
 export const Clips = React.memo(ClipsBase)
 function ClipsBase({
-  waveformItems,
+  getItem,
   regions,
   highlightedClipId,
   height,
   state: { pixelsPerSecond, viewBoxStartMs }
 }: {
-  waveformItems: Record<string, WaveformItem>
+  getItem: GetWaveformItem
   regions: WaveformRegion[]
   highlightedClipId: string | null
   height: number
@@ -47,26 +58,35 @@ function ClipsBase({
 }) {
   let highlightedClipDisplay: ReactNode
 
-  const visibleGroups = useMemo(
+  const acc: {
+    primary: {
+      clips: PrimaryClipDisplaySpecs[]
+      slots: Array<string | null>
+    }[]
+    secondary: SecondaryClipDisplaySpecs[]
+  } = { primary: [{ clips: [], slots: [] }], secondary: [] }
+  const { primary } = useMemo(
     () =>
-      regions.reduce(
+      reduceWhile(
+        regions,
+        acc,
+        (region) =>
+          region.start <=
+          viewBoxStartMs +
+            pixelsToMs(MAX_WAVEFORM_VIEWPORT_WIDTH, pixelsPerSecond),
         (acc, region, regionIndex) => {
-          if (
-            region.start >
-              viewBoxStartMs +
-                pixelsToMs(MAX_WAVEFORM_VIEWPORT_WIDTH, pixelsPerSecond) ||
-            getRegionEnd(regions, regionIndex) < viewBoxStartMs
-          ) {
+          const { primary, secondary } = acc
+          if (getRegionEnd(regions, regionIndex) < viewBoxStartMs) {
             return acc
           }
 
-          const lastGroup: TouchingClipsGroup = acc[acc.length - 1]
+          const lastGroup: TouchingClipsGroup = primary[primary.length - 1]
           const { clips, slots } = lastGroup
 
           const currentlyOverlapping = region.itemIds.length
           if (!currentlyOverlapping) {
             if (!lastGroup || lastGroup.clips.length)
-              acc.push({
+              primary.push({
                 clips: [],
                 slots: []
               })
@@ -80,13 +100,20 @@ function ClipsBase({
           })
 
           const startingNow = region.itemIds.flatMap((id) => {
-            const clip = waveformItems[id]
-            return clip.type === 'Clip' && region.start === clip.start
-              ? clip
-              : []
+            const clip = getItem(id)
+            return region.start === clip.start ? clip : []
           })
 
           startingNow.forEach((clip) => {
+            if (clip.clipwaveType === 'Secondary') {
+              secondary.push({
+                clip,
+                region,
+                regionIndex
+              })
+              return
+            }
+
             const emptySlot = slots.findIndex((id) => !id)
             const slotIndex = emptySlot === -1 ? slots.length : emptySlot
             slots[slotIndex] = clip.id
@@ -101,18 +128,14 @@ function ClipsBase({
           })
 
           return acc
-        },
-        [{ clips: [], slots: [] }] as {
-          clips: ClipDisplaySpecs[]
-          slots: Array<string | null>
-        }[]
+        }
       ),
-    [pixelsPerSecond, regions, viewBoxStartMs, waveformItems]
+    [pixelsPerSecond, regions, viewBoxStartMs, getItem]
   )
 
   return (
     <g>
-      {visibleGroups.flatMap(({ clips, slots }) =>
+      {primary.flatMap(({ clips, slots }) =>
         clips.flatMap(({ clip, regionIndex, region, level }) => {
           const isHighlighted = clip.id === highlightedClipId
           const display = (
@@ -139,72 +162,16 @@ function ClipsBase({
   )
 }
 
-export const WaveformClip = React.memo(WaveformClipBase)
-function WaveformClipBase({
-  clip,
-  isHighlighted,
-  height,
-  pixelsPerSecond,
-  regionIndex,
-  level
-}: {
-  clip: Clip
-  region: WaveformRegion
-  isHighlighted: boolean
-  height: number
-  regionIndex: number
-  pixelsPerSecond: number
-  level: number
-}) {
-  const { id, start, end } = clip
-  const clickDataProps: ClipClickDataProps = {
-    'data-clip-id': id,
-    'data-clip-start': start,
-    'data-clip-end': end,
-    'data-region-index': regionIndex
+function reduceWhile<T, U>(
+  arr: T[],
+  acc: U,
+  test: (element: T, index: number) => boolean,
+  reducer: (acc: U, element: T, index: number) => U
+) {
+  let currentAcc = acc
+  for (let i = 0; i < arr.length && test(arr[i], i); i++) {
+    currentAcc = reducer(currentAcc, arr[i], i)
   }
-  if (isHighlighted) clickDataProps['data-clip-is-highlighted'] = 1
-  const y = level * 10
-  return (
-    <g id={id} {...clickDataProps}>
-      <rect
-        className={cn(
-          css.waveformClip,
-          { [css.highlightedClip]: isHighlighted }
-          // $.waveformClip
-        )}
-        {...getClipRectProps(
-          msToPixels(start, pixelsPerSecond),
-          msToPixels(end, pixelsPerSecond),
-          height
-        )}
-        y={y}
-        style={
-          isHighlighted
-            ? undefined
-            : { fill: `hsl(205, 10%, ${40 + 10 * level}%)` }
-        }
-        {...clickDataProps}
-      />
 
-      <rect
-        className={css.waveformClipBorder}
-        x={msToPixels(start, pixelsPerSecond)}
-        y={0}
-        width={msToPixels(SELECTION_BORDER_MILLISECONDS, pixelsPerSecond)}
-        height={height}
-        {...clickDataProps}
-      />
-      <rect
-        className={cn(css.waveformClipBorder, {
-          [css.highlightedClipBorder]: isHighlighted
-        })}
-        x={msToPixels(end - SELECTION_BORDER_MILLISECONDS, pixelsPerSecond)}
-        y={y}
-        width={msToPixels(SELECTION_BORDER_MILLISECONDS, pixelsPerSecond)}
-        height={height}
-        {...clickDataProps}
-      />
-    </g>
-  )
+  return currentAcc
 }

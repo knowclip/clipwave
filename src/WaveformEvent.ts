@@ -1,6 +1,6 @@
 import { MouseEvent } from 'react'
 import { msToSeconds } from './utils'
-import { WaveformState } from './WaveformState'
+import { WaveformItem, WaveformState } from './WaveformState'
 
 const isNode = new Function(
   'try {return this===global;}catch(e){return false;}'
@@ -56,13 +56,14 @@ export type WaveformDragMove = {
   type: 'MOVE'
   start: number
   end: number
-  clipId: string
+  clip: WaveformItem
   regionIndex: number
   waveformState: WaveformState
   timeStamp: number
 }
 export type WaveformDragStretch = {
   type: 'STRETCH'
+  originKey: 'start' | 'end'
   start: number
   end: number
   clipId: string

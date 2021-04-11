@@ -1,3 +1,4 @@
+import { GetWaveformItem } from '../useWaveform'
 import { WaveformItem, WaveformRegion } from '../WaveformState'
 
 export const calculateRegions = (
@@ -8,26 +9,20 @@ export const calculateRegions = (
   startRegions = [{ start: 0, itemIds: [], end }]
 ): {
   regions: WaveformRegion[]
-  waveformItemsMap: Record<string, WaveformItem>
 } => {
   let regions: WaveformRegion[] = startRegions
-  const waveformItemsMap: Record<string, WaveformItem> = {}
   for (const item of sortedItems) {
-    regions = newRegionsWithItem(regions, waveformItemsMap, item)
+    regions = newRegionsWithItem(regions, item)
   }
 
-  return { regions, waveformItemsMap }
+  return { regions }
 }
 
 export function newRegionsWithItem(
   regions: WaveformRegion[],
-  /** to be mutated */
-  waveformItemsMapWithNewItem: Record<string, WaveformItem>,
   newItem: WaveformItem
 ): WaveformRegion[] {
   const newRegions: WaveformRegion[] = []
-
-  waveformItemsMapWithNewItem[newItem.id] = newItem
 
   // TODO: maybe don't always start at 0
   for (let i = 0; i < regions.length; i++) {
@@ -73,18 +68,19 @@ export function getRegionEnd(regions: WaveformRegion[], index: number): number {
   const nextRegionStart = nextRegion.start
   return nextRegionStart
 }
-type Coords = { start: number; end: number }
+
 function overlap(a: Coords, b: Coords) {
   return a.start <= b.end && a.end >= b.start
 }
 
 export function recalculateRegions(
   regions: WaveformRegion[],
-  oldItems: Record<string, WaveformItem>,
+  getItem: GetWaveformItem,
   targetId: string,
   newTarget: WaveformItem | null
 ) {
-  const oldTarget = oldItems[targetId]
+  const oldTarget = getItem(targetId)
+  if (!oldTarget) throw new Error('no item with id' + targetId)
   const isAffected = (region: WaveformRegion, i: number): boolean => {
     const regionCoords = {
       start: region.start,
@@ -113,18 +109,20 @@ export function recalculateRegions(
   for (let i = recalculationStart; i <= recalculationEnd; i++) {
     const region = regions[i]
     for (const id of region.itemIds) {
-      const item = id === targetId ? newTarget : oldItems[id]
+      const item = id === targetId ? newTarget : getItem(id)
       if (item && !itemsToBeIncluded.includes(item))
         itemsToBeIncluded.push(item)
     }
   }
-  itemsToBeIncluded.sort((a, b) => {
-    const byStart = a.start - b.start
-    return byStart || b.end - a.end
-  })
+
+  // to remove dependency on getItem:
+  // could create WaveformItems, calculate ends with just regions data,
+  // then throw them away
+  sortWaveformItems(itemsToBeIncluded)
 
   const end = getRegionEnd(regions, recalculationEnd)
-  const changedRegions = calculateRegions(itemsToBeIncluded, end, [
+
+  const { regions: changedRegions } = calculateRegions(itemsToBeIncluded, end, [
     {
       start: regions[recalculationStart].start,
       itemIds: [],
@@ -137,21 +135,21 @@ export function recalculateRegions(
 
   if (
     pre.length &&
-    changedRegions.regions.length &&
+    changedRegions.length &&
     setsAreEqual(
       new Set(pre[pre.length - 1].itemIds),
-      new Set(changedRegions.regions[0].itemIds)
+      new Set(changedRegions[0].itemIds)
     )
   ) {
-    changedRegions.regions.shift()
+    changedRegions.shift()
   }
 
   if (
     post.length &&
-    changedRegions.regions.length &&
+    changedRegions.length &&
     setsAreEqual(
       new Set(post[0].itemIds),
-      new Set(changedRegions.regions[changedRegions.regions.length - 1].itemIds)
+      new Set(changedRegions[changedRegions.length - 1].itemIds)
     )
   ) {
     post.shift()
@@ -159,10 +157,13 @@ export function recalculateRegions(
   }
 
   if (post.length) {
-    delete changedRegions.regions[changedRegions.regions.length - 1].end
+    delete changedRegions[changedRegions.length - 1].end
   }
 
-  return [...pre, ...changedRegions.regions, ...post]
+  // return [...pre, ...changedRegions.regions, ...post]
+  const recalculated = [...pre, ...changedRegions, ...post]
+  // console.log({ recalculated })
+  return recalculated
 }
 
 function setsAreEqual<T>(as: Set<T>, bs: Set<T>) {
@@ -196,4 +197,14 @@ function searchFromEnd<T>(
   }
 
   return -1
+}
+
+type Coords = { start: number; end: number }
+
+/** mutates array */
+export function sortWaveformItems<T extends Coords>(items: T[]): T[] {
+  return items.sort((a, b) => {
+    const byStart = a.start - b.start
+    return byStart || b.end - a.end
+  })
 }
