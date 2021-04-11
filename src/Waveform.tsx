@@ -4,7 +4,6 @@ import {
   pixelsToMs,
   secondsToMs,
   secondsToPixels,
-  SELECTION_BORDER_MILLISECONDS,
   WAVEFORM_HEIGHT
 } from './utils'
 import { GetWaveformItem, WaveformInterface } from './useWaveform'
@@ -30,6 +29,7 @@ import { getClipRectProps } from './getClipRectProps'
 import { Clips } from './WaveformClips'
 import { getFinalWaveformDragAction } from './getFinalWaveformDragAction'
 import { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
+import { getWaveformMousedownAction } from './getWaveformMousedownAction'
 
 type WaveformEventHandlers = {
   onWaveformDrag?: (event: WaveformDragOf<WaveformDragCreate>) => void
@@ -404,56 +404,4 @@ function waveformTimeAtMousePosition(
 
   const offsetX = clientX - left
   return pixelsToMs(offsetX, pixelsPerSecond) + viewBoxStartMs
-}
-
-function getWaveformMousedownAction(
-  dataset: DOMStringMap,
-  event: WaveformMousedownEvent,
-  waveform: WaveformInterface
-): WaveformDragAction {
-  const { state, getItem } = waveform
-  const ms = event.milliseconds
-  const timeStamp = event.timeStamp
-
-  // could be NaN
-  const start = Number(dataset.clipStart)
-  const end = Number(dataset.clipEnd)
-  if (
-    dataset &&
-    dataset.clipId &&
-    (Math.abs(start - ms) <= SELECTION_BORDER_MILLISECONDS ||
-      Math.abs(end - ms) <= SELECTION_BORDER_MILLISECONDS)
-  ) {
-    return {
-      type: 'STRETCH',
-      start: ms,
-      end: ms,
-      originKey: Math.abs(ms - start) < Math.abs(ms - end) ? 'start' : 'end',
-      regionIndex: Number(dataset.regionIndex),
-      clipId: dataset.clipId,
-      waveformState: state,
-      timeStamp
-    }
-  } else if (dataset && dataset.clipId)
-    return {
-      type: 'MOVE',
-      start: ms,
-      end: ms,
-      // left: 'start',
-      // right: 'end',
-      clip: getItem(dataset.clipId),
-      regionIndex: Number(dataset.regionIndex),
-      waveformState: state,
-      timeStamp
-    }
-  else
-    return {
-      type: 'CREATE',
-      start: ms,
-      end: ms,
-      // left: 'start',
-      // right: 'end',
-      waveformState: state,
-      timeStamp
-    }
 }

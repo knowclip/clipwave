@@ -2,12 +2,6 @@ import { MouseEvent } from 'react'
 import { msToSeconds } from './utils'
 import { WaveformItem, WaveformState } from './WaveformState'
 
-const isNode = new Function(
-  'try {return this===global;}catch(e){return false;}'
-)
-
-if (isNode()) (global as any).Event = Object
-
 export class WaveformMousedownEvent extends Event {
   milliseconds: number
   browserMousedown: MouseEvent<SVGElement>
