@@ -32,17 +32,20 @@ export function getFinalWaveformDragAction(
 
   switch (pendingAction.type) {
     case 'CREATE': {
-      const gestureCoordinates = {
-        // TODO: verify if this should this really be sorted here?
-        start: Math.min(pendingAction.start, end),
-        end: Math.max(pendingAction.start, end)
-      }
       return {
         ...pendingAction,
         waveformState,
-        ...gestureCoordinates,
+        // TODO: verify if this should this really be sorted here?
+        start: Math.min(pendingAction.start, end),
+        end: Math.max(pendingAction.start, end),
         // bound?
-        overlaps: getOverlaps(gestureCoordinates, null)
+        overlaps: getOverlaps(
+          {
+            start: Math.min(pendingAction.start, end),
+            end: Math.max(pendingAction.start, end)
+          },
+          null
+        )
       }
     }
     case 'MOVE': {
@@ -68,8 +71,14 @@ export function getFinalWaveformDragAction(
         end: start + boundedDeltaX,
         overlaps: getOverlaps(
           {
-            start: Math.min(pendingAction.start, pendingAction.clip.start),
-            end: Math.max(pendingAction.end, pendingAction.clip.end)
+            start: Math.min(
+              pendingAction.clip.start,
+              pendingAction.clip.start + boundedDeltaX
+            ),
+            end: Math.max(
+              pendingAction.clip.end,
+              pendingAction.clip.end + boundedDeltaX
+            )
           },
           clipId
         )
@@ -85,16 +94,19 @@ export function getFinalWaveformDragAction(
               clipToStretch.start + CLIP_THRESHOLD_MILLSECONDS,
               secondsToMs(waveformState.durationSeconds)
             ]
-      const gestureCoordinates = {
-        start: Math.min(pendingAction.start, clipToStretch.start),
-        end: Math.max(pendingAction.end, clipToStretch.end)
-      }
+
+      const stretchEnd = bound(pendingAction.end, bounds)
       return {
         ...pendingAction,
         waveformState,
-        ...gestureCoordinates,
-        end: bound(pendingAction.end, bounds),
-        overlaps: getOverlaps(gestureCoordinates, clipId)
+        end: stretchEnd,
+        overlaps: getOverlaps(
+          {
+            start: Math.min(clipToStretch.start, stretchEnd),
+            end: Math.max(clipToStretch.end, stretchEnd)
+          },
+          clipId
+        )
       }
     }
   }

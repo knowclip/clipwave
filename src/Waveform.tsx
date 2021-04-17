@@ -349,6 +349,7 @@ function useWaveformMouseActions({
 
       if (pendingAction) {
         const gesture = getFinalWaveformDragAction(pendingAction, ms, waveform)
+        console.log('overlaps', gesture.overlaps, gesture)
         const event = new WaveformDragEvent(currentMouseDown, gesture)
         document.dispatchEvent(event)
 
