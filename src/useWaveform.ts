@@ -1,7 +1,7 @@
 import { useCallback, useReducer, useRef } from 'react'
 import { secondsToMs, pixelsToMs } from './utils'
 import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
-import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
+import { WaveformItem, WaveformRegion } from './WaveformState'
 import { elementWidth } from './utils/elementWidth'
 import {
   calculateRegions,
@@ -10,17 +10,7 @@ import {
   recalculateRegions
 } from './utils/calculateRegions'
 import { ClipDrag, ClipStretch } from './WaveformEvent'
-import { waveformStateReducer } from './waveformStateReducer'
-
-export const blankState: WaveformState = {
-  cursorMs: 0,
-  durationSeconds: 0,
-  viewBoxStartMs: 0,
-  pixelsPerSecond: 50,
-  selection: null,
-  pendingAction: null,
-  regions: []
-}
+import { waveformStateReducer, blankState } from './waveformStateReducer'
 
 export type WaveformInterface = ReturnType<typeof useWaveform>
 
@@ -165,7 +155,6 @@ export function useWaveform(getItem: GetWaveformItem) {
     svgRef,
     state,
     dispatch,
-    regions,
     getItem,
     selectionDoesntNeedSetAtNextTimeUpdate,
     actions,

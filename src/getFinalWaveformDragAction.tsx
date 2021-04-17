@@ -14,21 +14,18 @@ export function getFinalWaveformDragAction(
 
   const getOverlaps = (
     gestureCoordinates: { start: number; end: number },
-    targetId?: string
+    targetId: string | null
   ) =>
     Array.from(
       waveform.reduceOnVisibleRegions((acc, region, index) => {
-        let regionCoords: { start: number; end: number }
-        region.itemIds.forEach((id) => {
-          if (id === targetId) return
-
-          regionCoords = regionCoords || {
-            start: region.start,
-            end: getRegionEnd(waveform.state.regions, index)
-          }
-
-          if (overlap(regionCoords, gestureCoordinates)) acc.add(id)
-        })
+        const regionCoords = {
+          start: region.start,
+          end: getRegionEnd(waveform.state.regions, index)
+        }
+        if (overlap(regionCoords, gestureCoordinates))
+          region.itemIds.forEach((id) => {
+            if (id !== targetId) acc.add(id)
+          })
         return acc
       }, new Set<string>())
     )
@@ -45,7 +42,7 @@ export function getFinalWaveformDragAction(
         waveformState,
         ...gestureCoordinates,
         // bound?
-        overlaps: getOverlaps(gestureCoordinates)
+        overlaps: getOverlaps(gestureCoordinates, null)
       }
     }
     case 'MOVE': {
@@ -64,16 +61,18 @@ export function getFinalWaveformDragAction(
         regionsEnd - target.end
       ])
 
-      const gestureCoordinates = {
-        start,
-        end: start + boundedDeltaX
-      }
-
       return {
         ...pendingAction,
         waveformState,
-        ...gestureCoordinates,
-        overlaps: getOverlaps(gestureCoordinates)
+        start,
+        end: start + boundedDeltaX,
+        overlaps: getOverlaps(
+          {
+            start: Math.min(pendingAction.start, pendingAction.clip.start),
+            end: Math.max(pendingAction.end, pendingAction.clip.end)
+          },
+          clipId
+        )
       }
     }
     case 'STRETCH': {
@@ -87,14 +86,15 @@ export function getFinalWaveformDragAction(
               secondsToMs(waveformState.durationSeconds)
             ]
       const gestureCoordinates = {
-        start: pendingAction.start,
-        end: bound(pendingAction.end, bounds)
+        start: Math.min(pendingAction.start, clipToStretch.start),
+        end: Math.max(pendingAction.end, clipToStretch.end)
       }
       return {
         ...pendingAction,
         waveformState,
         ...gestureCoordinates,
-        overlaps: getOverlaps(gestureCoordinates)
+        end: bound(pendingAction.end, bounds),
+        overlaps: getOverlaps(gestureCoordinates, clipId)
       }
     }
   }

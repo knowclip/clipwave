@@ -2,7 +2,16 @@ import { pixelsToMs, secondsToMs } from './utils'
 import { WaveformState } from './WaveformState'
 import { bound } from './utils/bound'
 import { WaveformAction } from './WaveformAction'
-import { blankState } from './useWaveform'
+
+export const blankState: WaveformState = {
+  cursorMs: 0,
+  durationSeconds: 0,
+  viewBoxStartMs: 0,
+  pixelsPerSecond: 50,
+  selection: null,
+  pendingAction: null,
+  regions: []
+}
 
 export function waveformStateReducer(
   state: WaveformState,
