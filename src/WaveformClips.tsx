@@ -36,14 +36,12 @@ type SecondaryClipDisplaySpecs = {
 export const Clips = React.memo(ClipsBase)
 function ClipsBase({
   getItem,
-  highlightedClipId,
   height,
-  state: { pixelsPerSecond },
+  state: { pixelsPerSecond, selection },
   renderSecondaryClip,
   reduceOnVisibleRegions
 }: {
   getItem: GetWaveformItem
-  highlightedClipId: string | null
   height: number
   state: WaveformState
   renderSecondaryClip?: (specs: SecondaryClipDisplayProps) => ReactNode
@@ -112,11 +110,13 @@ function ClipsBase({
     }, acc)
   }, [reduceOnVisibleRegions, getItem])
 
+  const selectionId = selection?.item?.id
+
   return (
     <g>
       {primary.flatMap(({ clips, slots }) =>
         clips.flatMap(({ clip, regionIndex, region, level }) => {
-          const isHighlighted = clip.id === highlightedClipId
+          const isHighlighted = clip.id === selectionId
           const display = (
             <WaveformClip
               clip={clip}

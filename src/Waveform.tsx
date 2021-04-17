@@ -61,17 +61,13 @@ export default function Waveform({
     viewBoxStartMs,
     durationSeconds,
     pixelsPerSecond,
-    pendingAction,
-    selection
+    pendingAction
   } = waveform.state
   const { handleMouseDown, pendingActionRef } = useWaveformMouseActions({
     waveform,
     playerRef,
     ...waveformEventHandlers
   })
-
-  const highlightedClipId =
-    selection?.item?.clipwaveType === 'Primary' ? selection.item.id : null
 
   const handleMouseWheel: React.WheelEventHandler<SVGSVGElement> = useCallback(
     (e) => {
@@ -108,7 +104,6 @@ export default function Waveform({
         <Clips
           getItem={waveform.getItem}
           reduceOnVisibleRegions={waveform.reduceOnVisibleRegions}
-          highlightedClipId={highlightedClipId}
           height={height}
           state={waveform.state}
           renderSecondaryClip={renderSecondaryClip}

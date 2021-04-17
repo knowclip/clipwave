@@ -113,6 +113,7 @@ function isValidNewSelection(
   currentSelection: WaveformItem | null,
   newSelectionCandidate: WaveformItem | null
 ) {
+  // TODO: get rid of this knowclip-specific logic
   if (
     currentSelection &&
     currentSelection.clipwaveType === 'Primary' &&
