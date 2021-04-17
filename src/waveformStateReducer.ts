@@ -124,6 +124,7 @@ export function waveformStateReducer(
         )
       }
     }
+
     case 'DELETE_ITEM':
       return {
         ...state,
@@ -134,6 +135,7 @@ export function waveformStateReducer(
           null
         )
       }
+
     default:
       return state
   }

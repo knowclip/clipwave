@@ -1,10 +1,10 @@
 import { useCallback, useReducer, useRef } from 'react'
-import { secondsToMs } from './utils'
+import { secondsToMs, pixelsToMs } from './utils'
 import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
 import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
 import { elementWidth } from './utils/elementWidth'
-import { calculateRegions } from './utils/calculateRegions'
-import { WaveformDragMove, WaveformDragStretch } from './WaveformEvent'
+import { calculateRegions, getRegionEnd } from './utils/calculateRegions'
+import { ClipDrag, ClipStretch } from './WaveformEvent'
 import { waveformStateReducer } from './waveformStateReducer'
 
 export const blankState: WaveformState = {
@@ -105,7 +105,7 @@ export function useWaveform(getItem: GetWaveformItem) {
       [getItem]
     ),
     moveItem: useCallback(
-      (move: WaveformDragMove) => {
+      (move: ClipDrag) => {
         dispatch({
           type: 'MOVE_ITEM',
           move,
@@ -115,7 +115,7 @@ export function useWaveform(getItem: GetWaveformItem) {
       [getItem]
     ),
     stretchItem: useCallback(
-      (stretch: WaveformDragStretch) => {
+      (stretch: ClipStretch) => {
         dispatch({
           type: 'STRETCH_ITEM',
           stretch,
@@ -126,6 +126,29 @@ export function useWaveform(getItem: GetWaveformItem) {
     )
   }
 
+  const reduceOnVisibleRegions: ReduceOnVisibleRegions = useCallback(
+    (callback, initialAccumulator) => {
+      const { viewBoxStartMs, pixelsPerSecond } = state
+
+      return reduceWhile(
+        regions,
+        initialAccumulator,
+        (region) =>
+          region.start <=
+          viewBoxStartMs +
+            pixelsToMs(MAX_WAVEFORM_VIEWPORT_WIDTH, pixelsPerSecond),
+        (acc, region, regionIndex) => {
+          if (getRegionEnd(regions, regionIndex) < viewBoxStartMs) {
+            return acc
+          }
+
+          return callback(acc, region, regionIndex)
+        }
+      )
+    },
+    [regions, state]
+  )
+
   const waveformInterface = {
     svgRef,
     state,
@@ -133,7 +156,8 @@ export function useWaveform(getItem: GetWaveformItem) {
     regions,
     getItem,
     selectionDoesntNeedSetAtNextTimeUpdate,
-    actions
+    actions,
+    reduceOnVisibleRegions
   }
 
   return {
@@ -150,3 +174,22 @@ export function useWaveform(getItem: GetWaveformItem) {
 }
 
 export const MAX_WAVEFORM_VIEWPORT_WIDTH = 3000
+
+type ReduceOnVisibleRegions = <T>(
+  callback: (accumulator: T, region: WaveformRegion, regionIndex: number) => T,
+  initialAccumulator: T
+) => T
+
+function reduceWhile<T, U>(
+  arr: T[],
+  acc: U,
+  test: (element: T, index: number) => boolean,
+  reducer: (acc: U, element: T, index: number) => U
+) {
+  let currentAcc = acc
+  for (let i = 0; i < arr.length && test(arr[i], i); i++) {
+    currentAcc = reducer(currentAcc, arr[i], i)
+  }
+
+  return currentAcc
+}

@@ -69,7 +69,7 @@ export function getRegionEnd(regions: WaveformRegion[], index: number): number {
   return nextRegionStart
 }
 
-function overlap(a: Coords, b: Coords) {
+export function overlap(a: Coords, b: Coords) {
   return a.start <= b.end && a.end >= b.start
 }
 
@@ -203,6 +203,7 @@ type Coords = { start: number; end: number }
 
 /** mutates array */
 export function sortWaveformItems<T extends Coords>(items: T[]): T[] {
+  // TODO: optimize for mostly sorted
   return items.sort((a, b) => {
     const byStart = a.start - b.start
     return byStart || b.end - a.end

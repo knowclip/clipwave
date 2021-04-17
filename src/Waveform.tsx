@@ -16,12 +16,12 @@ import {
 } from 'react'
 import {
   WaveformMousedownEvent,
-  WaveformDragAction,
-  WaveformDragCreate,
+  WaveformGesture,
+  WaveformDrag,
   WaveformDragEvent,
-  WaveformDragMove,
-  WaveformDragOf,
-  WaveformDragStretch
+  ClipDrag,
+  WaveformGestureOf,
+  ClipStretch
 } from './WaveformEvent'
 import { WaveformItem } from './WaveformState'
 import css from './Waveform.module.scss'
@@ -32,9 +32,9 @@ import { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
 import { getWaveformMousedownAction } from './getWaveformMousedownAction'
 
 type WaveformEventHandlers = {
-  onWaveformDrag?: (event: WaveformDragOf<WaveformDragCreate>) => void
-  onClipDrag?: (event: WaveformDragOf<WaveformDragMove>) => void
-  onClipEdgeDrag?: (event: WaveformDragOf<WaveformDragStretch>) => void
+  onWaveformDrag?: (event: WaveformGestureOf<WaveformDrag>) => void
+  onClipDrag?: (event: WaveformGestureOf<ClipDrag>) => void
+  onClipEdgeDrag?: (event: WaveformGestureOf<ClipStretch>) => void
   onClipDoubleClick?: (clip: WaveformItem) => void
   onMouseWheel?: React.WheelEventHandler
 }
@@ -107,7 +107,7 @@ export default function Waveform({
         />
         <Clips
           getItem={waveform.getItem}
-          regions={waveform.regions}
+          reduceOnVisibleRegions={waveform.reduceOnVisibleRegions}
           highlightedClipId={highlightedClipId}
           height={height}
           state={waveform.state}
@@ -170,7 +170,7 @@ function Cursor({
 }
 
 const WAVEFORM_ACTION_TYPE_TO_CLASSNAMES: Record<
-  WaveformDragAction['type'],
+  WaveformGesture['type'],
   string
 > = {
   CREATE: css.waveformPendingClip,
@@ -184,7 +184,7 @@ function PendingWaveformItem({
   pixelsPerSecond,
   getItem
 }: {
-  action: WaveformDragAction
+  action: WaveformGesture
   height: number
   rectRef: MutableRefObject<SVGRectElement | null>
   pixelsPerSecond: number
@@ -361,13 +361,13 @@ function useWaveformMouseActions({
 
         if (event.action.type === ('CREATE' as const))
           eventHandlers.onWaveformDrag?.(
-            event as WaveformDragOf<WaveformDragCreate>
+            event as WaveformGestureOf<WaveformDrag>
           )
         if (event.action.type === 'MOVE')
-          eventHandlers.onClipDrag?.(event as WaveformDragOf<WaveformDragMove>)
+          eventHandlers.onClipDrag?.(event as WaveformGestureOf<ClipDrag>)
         if (event.action.type === 'STRETCH')
           eventHandlers.onClipEdgeDrag?.(
-            event as WaveformDragOf<WaveformDragStretch>
+            event as WaveformGestureOf<ClipStretch>
           )
       }
     }

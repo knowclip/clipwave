@@ -1,12 +1,12 @@
 import { SELECTION_BORDER_MILLISECONDS } from './utils'
 import { WaveformInterface } from './useWaveform'
-import { WaveformMousedownEvent, WaveformDragAction } from './WaveformEvent'
+import { WaveformMousedownEvent, WaveformGesture } from './WaveformEvent'
 
 export function getWaveformMousedownAction(
   dataset: DOMStringMap,
   event: WaveformMousedownEvent,
   waveform: WaveformInterface
-): WaveformDragAction {
+): WaveformGesture {
   const { state, getItem } = waveform
   const ms = event.milliseconds
   const timeStamp = event.timeStamp
@@ -28,7 +28,8 @@ export function getWaveformMousedownAction(
       regionIndex: Number(dataset.regionIndex),
       clipId: dataset.clipId,
       waveformState: state,
-      timeStamp
+      timeStamp,
+      overlaps: []
     }
   } else if (dataset && dataset.clipId)
     return {
@@ -38,7 +39,8 @@ export function getWaveformMousedownAction(
       clip: getItem(dataset.clipId),
       regionIndex: Number(dataset.regionIndex),
       waveformState: state,
-      timeStamp
+      timeStamp,
+      overlaps: []
     }
   else
     return {
@@ -46,6 +48,8 @@ export function getWaveformMousedownAction(
       start: ms,
       end: ms,
       waveformState: state,
-      timeStamp
+      timeStamp,
+      // TODO: split mousedown and gesture types, mousedown doesn't need to track overlaps yet
+      overlaps: []
     }
 }

@@ -1,25 +1,51 @@
 import { CLIP_THRESHOLD_MILLSECONDS, secondsToMs } from './utils'
 import { WaveformInterface } from './useWaveform'
-import { WaveformDragAction } from './WaveformEvent'
+import { WaveformGesture } from './WaveformEvent'
 import { bound } from './utils/bound'
-import { getRegionEnd } from './utils/calculateRegions'
+import { getRegionEnd, overlap } from './utils/calculateRegions'
 
 export function getFinalWaveformDragAction(
-  pendingAction: WaveformDragAction,
+  pendingAction: WaveformGesture,
   ms: number,
   waveform: WaveformInterface
-): WaveformDragAction {
+): WaveformGesture {
   const { state: waveformState } = waveform
   const end = ms
+
+  const getOverlaps = (
+    gestureCoordinates: { start: number; end: number },
+    targetId?: string
+  ) =>
+    Array.from(
+      waveform.reduceOnVisibleRegions((acc, region, index) => {
+        let regionCoords: { start: number; end: number }
+        region.itemIds.forEach((id) => {
+          if (id === targetId) return
+
+          regionCoords = regionCoords || {
+            start: region.start,
+            end: getRegionEnd(waveform.state.regions, index)
+          }
+
+          if (overlap(regionCoords, gestureCoordinates)) acc.add(id)
+        })
+        return acc
+      }, new Set<string>())
+    )
+
   switch (pendingAction.type) {
     case 'CREATE': {
-      const { start } = pendingAction
+      const gestureCoordinates = {
+        // TODO: verify if this should this really be sorted here?
+        start: Math.min(pendingAction.start, end),
+        end: Math.max(pendingAction.start, end)
+      }
       return {
         ...pendingAction,
         waveformState,
-        start: Math.min(start, end),
+        ...gestureCoordinates,
         // bound?
-        end: Math.max(start, end)
+        overlaps: getOverlaps(gestureCoordinates)
       }
     }
     case 'MOVE': {
@@ -38,14 +64,20 @@ export function getFinalWaveformDragAction(
         regionsEnd - target.end
       ])
 
+      const gestureCoordinates = {
+        start,
+        end: start + boundedDeltaX
+      }
+
       return {
         ...pendingAction,
         waveformState,
-        end: start + boundedDeltaX
+        ...gestureCoordinates,
+        overlaps: getOverlaps(gestureCoordinates)
       }
     }
     case 'STRETCH': {
-      const { clipId, end, originKey } = pendingAction
+      const { clipId, originKey } = pendingAction
       const clipToStretch = waveform.getItem(clipId)
       const bounds: [number, number] =
         originKey === 'start'
@@ -54,11 +86,15 @@ export function getFinalWaveformDragAction(
               clipToStretch.start + CLIP_THRESHOLD_MILLSECONDS,
               secondsToMs(waveformState.durationSeconds)
             ]
-      const stretchEnd = bound(end, bounds)
+      const gestureCoordinates = {
+        start: pendingAction.start,
+        end: bound(pendingAction.end, bounds)
+      }
       return {
         ...pendingAction,
         waveformState,
-        end: stretchEnd
+        ...gestureCoordinates,
+        overlaps: getOverlaps(gestureCoordinates)
       }
     }
   }

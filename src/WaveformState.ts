@@ -8,7 +8,7 @@ export type WaveformState = {
     region: WaveformRegion
     item: WaveformItem
   } | null
-  pendingAction: import('./WaveformEvent').WaveformDragAction | null
+  pendingAction: import('./WaveformEvent').WaveformGesture | null
   regions: WaveformRegion[]
 }
 
