@@ -3,7 +3,12 @@ import { secondsToMs, pixelsToMs } from './utils'
 import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
 import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
 import { elementWidth } from './utils/elementWidth'
-import { calculateRegions, getRegionEnd } from './utils/calculateRegions'
+import {
+  calculateRegions,
+  getRegionEnd,
+  newRegionsWithItems,
+  recalculateRegions
+} from './utils/calculateRegions'
 import { ClipDrag, ClipStretch } from './WaveformEvent'
 import { waveformStateReducer } from './waveformStateReducer'
 
@@ -16,18 +21,6 @@ export const blankState: WaveformState = {
   pendingAction: null,
   regions: []
 }
-
-// const getInitialState = (
-//   getInitialSortedItems: () => WaveformItem[],
-//   durationSeconds: number
-// ): WaveformState => {
-//   const sortedItems = getInitialSortedItems()
-//   const { waveformItemsMap: _, regions } = calculateRegions(
-//     sortedItems,
-//     secondsToMs(durationSeconds)
-//   )
-//   return { ...blankState, regions }
-// }
 
 export type WaveformInterface = ReturnType<typeof useWaveform>
 
@@ -85,44 +78,63 @@ export function useWaveform(getItem: GetWaveformItem) {
     addItem: useCallback(
       (item: WaveformItem) => {
         dispatch({
-          type: 'ADD_ITEM',
-          getItem,
-          item
+          type: 'SET_REGIONS',
+          regions: newRegionsWithItems(state.regions, [item])
         })
       },
-      [getItem]
+      [state.regions]
     ),
-    /** TODO: add multiple at once */
-    addItems: useCallback(() => {}, []),
+    addItems: useCallback(
+      (items: WaveformItem[]) => {
+        dispatch({
+          type: 'SET_REGIONS',
+          regions: newRegionsWithItems(state.regions, items)
+        })
+      },
+      [state.regions]
+    ),
     deleteItem: useCallback(
       (id: string) => {
         dispatch({
-          type: 'DELETE_ITEM',
-          item: getItem(id),
-          getItem
+          type: 'SET_REGIONS',
+          regions: recalculateRegions(state.regions, getItem, [
+            { id, newItem: null }
+          ])
         })
       },
-      [getItem]
+      [getItem, state.regions]
     ),
     moveItem: useCallback(
       (move: ClipDrag) => {
+        const { start, end, clip } = move
+        const delta = end - start
+        const target = getItem(clip.id)
+        const movedItem = {
+          ...target,
+          start: target.start + delta,
+          end: target.end + delta
+        }
         dispatch({
-          type: 'MOVE_ITEM',
-          move,
-          getItem
+          type: 'SET_REGIONS',
+          regions: recalculateRegions(state.regions, getItem, [
+            { id: target.id, newItem: movedItem }
+          ])
         })
       },
-      [getItem]
+      [getItem, state.regions]
     ),
     stretchItem: useCallback(
       (stretch: ClipStretch) => {
+        const { originKey, end, clipId } = stretch
+        const target = getItem(clipId)
         dispatch({
-          type: 'STRETCH_ITEM',
-          stretch,
-          getItem
+          type: 'SET_REGIONS',
+          regions: recalculateRegions(state.regions, getItem, [
+            { id: clipId, newItem: { ...target, [originKey]: end } }
+          ])
         })
       },
-      [getItem]
+      [getItem, state.regions]
     )
   }
 

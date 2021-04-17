@@ -3,10 +3,6 @@ import { WaveformState } from './WaveformState'
 import { bound } from './utils/bound'
 import { WaveformAction } from './WaveformAction'
 import { blankState } from './useWaveform'
-import {
-  newRegionsWithItem,
-  recalculateRegions
-} from './utils/calculateRegions'
 
 export function waveformStateReducer(
   state: WaveformState,
@@ -83,58 +79,12 @@ export function waveformStateReducer(
         }
       }
 
-    case 'ADD_ITEM':
+    case 'SET_REGIONS': {
       return {
         ...state,
-        regions: newRegionsWithItem(state.regions, action.item)
-      }
-
-    case 'MOVE_ITEM': {
-      const { move, getItem } = action
-      const { start, end, clip } = move
-      const delta = end - start
-      const target = getItem(clip.id)
-      const movedItem = {
-        ...target,
-        start: target.start + delta,
-        end: target.end + delta
-      }
-      const regions = recalculateRegions(
-        state.regions,
-        action.getItem,
-        target.id,
-        movedItem
-      )
-      return {
-        ...state,
-        regions
+        regions: action.regions
       }
     }
-
-    case 'STRETCH_ITEM': {
-      const { originKey, end, clipId } = action.stretch
-      const target = action.getItem(clipId)
-      return {
-        ...state,
-        regions: recalculateRegions(
-          state.regions,
-          action.getItem,
-          action.stretch.clipId,
-          { ...target, [originKey]: end }
-        )
-      }
-    }
-
-    case 'DELETE_ITEM':
-      return {
-        ...state,
-        regions: recalculateRegions(
-          state.regions,
-          action.getItem,
-          action.item.id,
-          null
-        )
-      }
 
     default:
       return state

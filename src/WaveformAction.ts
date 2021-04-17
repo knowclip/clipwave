@@ -1,5 +1,4 @@
-import { GetWaveformItem } from './useWaveform'
-import { WaveformGesture, ClipDrag, ClipStretch } from './WaveformEvent'
+import { WaveformGesture } from './WaveformEvent'
 import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
 
 export type WaveformAction =
@@ -20,23 +19,9 @@ export type WaveformAction =
       regionIndex: number
       item: WaveformItem
     }
-  | { type: 'ADD_ITEM'; item: WaveformItem; getItem: GetWaveformItem }
   | {
-      type: 'MOVE_ITEM'
-      move: ClipDrag
-      getItem: GetWaveformItem
-    }
-  | {
-      type: 'STRETCH_ITEM'
-      stretch: ClipStretch
-      getItem: GetWaveformItem
-    }
-  | { type: 'DELETE_ITEM'; item: WaveformItem; getItem: GetWaveformItem }
-  | {
-      type: 'SET_ITEMS'
-      sortedItems: WaveformItem[]
-      // rename
-      end: number
+      type: 'SET_REGIONS'
+      regions: WaveformRegion[]
     }
 
 // create

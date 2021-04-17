@@ -12,16 +12,21 @@ export const calculateRegions = (
 } => {
   let regions: WaveformRegion[] = startRegions
   for (const item of sortedItems) {
-    regions = newRegionsWithItem(regions, item)
+    regions = newRegionsWithItems(regions, [item])
   }
 
   return { regions }
 }
 
-export function newRegionsWithItem(
+export function newRegionsWithItems(
   regions: WaveformRegion[],
-  newItem: WaveformItem
+  sortedNewItems: WaveformItem[]
 ): WaveformRegion[] {
+  const updatesRange = {
+    start: Math.min(...sortedNewItems.map((newItem) => newItem.start)),
+    end: Math.max(...sortedNewItems.map((newItem) => newItem.end))
+  }
+
   const newRegions: WaveformRegion[] = []
 
   // TODO: maybe don't always start at 0
@@ -29,23 +34,31 @@ export function newRegionsWithItem(
     const region = regions[i]
     const regionEnd = getRegionEnd(regions, i)
     /// OFF BY ONE?
-    const overlap = region.start <= newItem.end && regionEnd > newItem.start
+    const regionIsAffected =
+      region.start <= updatesRange.end && regionEnd > updatesRange.start
 
-    if (overlap) {
+    if (regionIsAffected) {
       const splitRegions: WaveformRegion[] = []
 
-      if (newItem.start > region.start)
+      if (updatesRange.start > region.start)
         splitRegions.push({
           start: region.start,
           itemIds: region.itemIds
         })
+
+      const overlappingIds = sortedNewItems
+        .filter((item) =>
+          overlap(item, { start: region.start, end: regionEnd })
+        )
+        .map((item) => item.id)
+
       splitRegions.push({
-        start: Math.max(newItem.start, region.start),
-        itemIds: [...region.itemIds, newItem.id]
+        start: Math.max(updatesRange.start, region.start),
+        itemIds: [...region.itemIds, ...overlappingIds]
       })
-      if (newItem.end < regionEnd)
+      if (updatesRange.end < regionEnd)
         splitRegions.push({
-          start: newItem.end,
+          start: updatesRange.end,
           itemIds: region.itemIds
         })
 
@@ -73,23 +86,46 @@ export function overlap(a: Coords, b: Coords) {
   return a.start <= b.end && a.end >= b.start
 }
 
+type WaveformItemUpdate = {
+  id: WaveformItem['id']
+  newItem: WaveformItem | null
+}
+
 export function recalculateRegions(
   regions: WaveformRegion[],
   getItem: GetWaveformItem,
-  targetId: string,
-  newTarget: WaveformItem | null
+  adjacentUpdates: WaveformItemUpdate[]
 ) {
-  const oldTarget = getItem(targetId)
-  if (!oldTarget) throw new Error('no item with id' + targetId)
+  const idsToIndexes = adjacentUpdates.reduce((map, update, i) => {
+    map[update.id] = i
+    return map
+  }, {} as Record<WaveformItem['id'], number>)
+  const getUpdate = (id: WaveformItem['id']): WaveformItemUpdate | undefined =>
+    adjacentUpdates[idsToIndexes[id]]
+  const updatesRange = {
+    start: Math.min(
+      ...adjacentUpdates.flatMap(({ id, newItem: newItem }) => {
+        const old = getItem(id)
+
+        if (newItem) return [old.start, newItem.start]
+        return [old.start]
+      })
+    ),
+    end: Math.max(
+      ...adjacentUpdates.flatMap(({ id, newItem: newItem }) => {
+        const old = getItem(id)
+
+        if (newItem) return [old.end, newItem.end]
+        return [old.end]
+      })
+    )
+  }
   const isAffected = (region: WaveformRegion, i: number): boolean => {
     const regionCoords = {
       start: region.start,
       end: getRegionEnd(regions, i)
     }
-    return (
-      overlap(regionCoords, oldTarget) ||
-      Boolean(newTarget && overlap(regionCoords, newTarget))
-    )
+    return overlap(regionCoords, updatesRange)
   }
   const affectedRegionsStart = search(regions, 0, regions.length, isAffected)
 
@@ -109,15 +145,13 @@ export function recalculateRegions(
   for (let i = recalculationStart; i <= recalculationEnd; i++) {
     const region = regions[i]
     for (const id of region.itemIds) {
-      const item = id === targetId ? newTarget : getItem(id)
+      const update = getUpdate(id)
+      const item = update ? update.newItem : getItem(id)
       if (item && !itemsToBeIncluded.includes(item))
         itemsToBeIncluded.push(item)
     }
   }
 
-  // to remove dependency on getItem:
-  // could create WaveformItems, calculate ends with just regions data,
-  // then throw them away
   sortWaveformItems(itemsToBeIncluded)
 
   const end = getRegionEnd(regions, recalculationEnd)

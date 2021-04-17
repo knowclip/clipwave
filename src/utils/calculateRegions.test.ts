@@ -1,6 +1,6 @@
 import {
   calculateRegions,
-  newRegionsWithItem,
+  newRegionsWithItems,
   recalculateRegions,
   sortWaveformItems
 } from './calculateRegions'
@@ -103,9 +103,8 @@ describe('newRegionsWithItem', () => {
     const newItem = item('c', 15, 45)
 
     const { regions } = calculateRegions(items, end)
-    // const newMap = { ...waveformItemsMap, c: newItem }
 
-    const newRegions = newRegionsWithItem(regions, newItem)
+    const newRegions = newRegionsWithItems(regions, [newItem])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -129,12 +128,9 @@ describe('recalculateRegions', () => {
     const items = [a, b]
     const end = 10000
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      (id: string) => map[id],
-      'b',
-      null
-    )
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'b', newItem: null }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -151,12 +147,9 @@ describe('recalculateRegions', () => {
     const end = 10000
 
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      (id: string) => map[id],
-      'c',
-      null
-    )
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'c', newItem: null }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -173,12 +166,9 @@ describe('recalculateRegions', () => {
     const items = [a, b]
     const end = 10000
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      (id: string) => map[id],
-      'b',
-      item('b', 40, 60)
-    )
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'b', newItem: item('b', 40, 60) }
+    ])
 
     expect(newRegions).toEqual([
       region(0),
@@ -209,12 +199,9 @@ describe('recalculateRegions', () => {
       region(45, 'b'),
       endRegion(50, 10000)
     ])
-    const newRegions = recalculateRegions(
-      regions,
-      (id: string) => map[id],
-      'c',
-      newItem
-    )
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'c', newItem }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -237,12 +224,9 @@ describe('recalculateRegions', () => {
     const newItem = item('b', 17, 45)
 
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      (id: string) => map[id],
-      'b',
-      newItem
-    )
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'b', newItem }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -265,12 +249,9 @@ describe('recalculateRegions', () => {
     const newItem = item('a', 55, 65)
 
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      (id: string) => map[id],
-      'a',
-      newItem
-    )
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'a', newItem }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(20, 'b'),
