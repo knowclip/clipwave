@@ -194,10 +194,7 @@ export function recalculateRegions(
     delete changedRegions[changedRegions.length - 1].end
   }
 
-  // return [...pre, ...changedRegions.regions, ...post]
-  const recalculated = [...pre, ...changedRegions, ...post]
-  // console.log({ recalculated })
-  return recalculated
+  return [...pre, ...changedRegions, ...post]
 }
 
 function setsAreEqual<T>(as: Set<T>, bs: Set<T>) {
