@@ -262,4 +262,56 @@ describe('recalculateRegions', () => {
       endRegion(65, 10000)
     ])
   })
+
+  it('works with merge via move', () => {
+    const a = item('a', 10, 20)
+    const b = item('b', 30, 40)
+    const c = item('c', 50, 60)
+    const items = [a, b, c]
+    const map = { a, b, c }
+    const end = 10000
+
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'a', newItem: item('a', 25, 40) },
+      { id: 'b', newItem: null }
+    ])
+    expect(newRegions).toEqual([
+      region(0),
+      region(25, 'a'),
+      region(40),
+      region(50, 'c'),
+      endRegion(60, 10000)
+    ])
+  })
+
+  it('works with merge via stretch', () => {
+    const a = item('a', 10, 20)
+    const b = item('b', 40, 50)
+    const c = item('c', 5, 45)
+    const items = sortWaveformItems([a, b, c])
+    const map = { a, b, c }
+    const end = 10000
+
+    const { regions } = calculateRegions(items, end)
+    expect(regions).toEqual([
+      region(0),
+      region(5, 'c'),
+      region(10, 'c', 'a'),
+      region(20, 'c'),
+      region(40, 'c', 'b'),
+      region(45, 'b'),
+      endRegion(50, 10000)
+    ])
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'c', newItem: item('c', 10, 50) },
+      { id: 'a', newItem: null },
+      { id: 'b', newItem: null }
+    ])
+    expect(newRegions).toEqual([
+      region(0),
+      region(10, 'c'),
+      endRegion(50, 10000)
+    ])
+  })
 })
