@@ -58,7 +58,7 @@ export function getFinalWaveformDragAction(
         waveformState.regions,
         waveformState.regions.length - 1
       )
-      const target = waveform.getItem(clipId)
+      const target = waveform.getItemDangerously(clipId)
       const boundedDeltaX = bound(deltaX, [
         0 - target.start,
         regionsEnd - target.end
@@ -86,7 +86,7 @@ export function getFinalWaveformDragAction(
     }
     case 'STRETCH': {
       const { clipId, originKey } = pendingAction
-      const clipToStretch = waveform.getItem(clipId)
+      const clipToStretch = waveform.getItemDangerously(clipId)
       const bounds: [number, number] =
         originKey === 'start'
           ? [0, clipToStretch.end - CLIP_THRESHOLD_MILLSECONDS]

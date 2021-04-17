@@ -186,12 +186,12 @@ export const getNewWaveformSelectionAt = (
   currentSelection: WaveformState['selection']
 ): WaveformState['selection'] => {
   // TODO: optimize for non-seeking (normal playback) case
+  const newCurrentItem =
+    currentSelection && getNewWaveformItem(currentSelection.item.id)
   const unchangedCurrentItem =
     currentSelection &&
-    itemsAreEqual(
-      currentSelection.item,
-      getNewWaveformItem(currentSelection.item.id)
-    )
+    newCurrentItem &&
+    itemsAreEqual(currentSelection.item, newCurrentItem)
       ? currentSelection.item
       : null
   const stillWithinSameItem =
@@ -208,11 +208,10 @@ export const getNewWaveformSelectionAt = (
       const overlappedItemId =
         unchangedCurrentItem && stillWithinSameItem
           ? unchangedCurrentItem.id
-          : region.itemIds.find(
-              (id) =>
-                newMs >= getNewWaveformItem(id).start &&
-                newMs < getNewWaveformItem(id).end
-            )
+          : region.itemIds.find((id) => {
+              const item = getNewWaveformItem(id)
+              return item && newMs >= item.start && newMs < item.end
+            })
       const overlappedItem = overlappedItemId
         ? getNewWaveformItem(overlappedItemId)
         : null

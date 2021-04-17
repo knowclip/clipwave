@@ -194,22 +194,26 @@ function PendingWaveformItem({
     const deltaX = end - start
 
     const clipToMove = getItem(clipId)
+
     return (
-      <rect
-        ref={rectRef}
-        className={WAVEFORM_ACTION_TYPE_TO_CLASSNAMES[action.type]}
-        {...getClipRectProps(
-          msToPixels(clipToMove.start + deltaX, pixelsPerSecond),
-          msToPixels(clipToMove.end + deltaX, pixelsPerSecond),
-          height
-        )}
-      />
+      clipToMove && (
+        <rect
+          ref={rectRef}
+          className={WAVEFORM_ACTION_TYPE_TO_CLASSNAMES[action.type]}
+          {...getClipRectProps(
+            msToPixels(clipToMove.start + deltaX, pixelsPerSecond),
+            msToPixels(clipToMove.end + deltaX, pixelsPerSecond),
+            height
+          )}
+        />
+      )
     )
   }
 
   if (action.type === 'STRETCH') {
     const { start, end, clipId } = action
     const clipToStretch = getItem(clipId)
+    if (!clipToStretch) return null
     const originKey =
       Math.abs(start - clipToStretch.start) <
       Math.abs(start - clipToStretch.end)
@@ -349,7 +353,6 @@ function useWaveformMouseActions({
 
       if (pendingAction) {
         const gesture = getFinalWaveformDragAction(pendingAction, ms, waveform)
-        console.log('overlaps', gesture.overlaps, gesture)
         const event = new WaveformDragEvent(currentMouseDown, gesture)
         document.dispatchEvent(event)
 

@@ -102,18 +102,26 @@ export function recalculateRegions(
   }, {} as Record<WaveformItem['id'], number>)
   const getUpdate = (id: WaveformItem['id']): WaveformItemUpdate | undefined =>
     adjacentUpdates[idsToIndexes[id]]
+  const validAdjacentUpdates = adjacentUpdates.filter(
+    ({ id, newItem }) => getItem(id) || newItem === null
+  )
+  if (!validAdjacentUpdates.length) return regions
+
   const updatesRange = {
     start: Math.min(
-      ...adjacentUpdates.flatMap(({ id, newItem: newItem }) => {
+      ...validAdjacentUpdates.flatMap(({ id, newItem: newItem }) => {
+        // TODO: investigate speeding this up by requiring deleted item coords
         const old = getItem(id)
+        if (!old) return 0
 
         if (newItem) return [old.start, newItem.start]
         return [old.start]
       })
     ),
     end: Math.max(
-      ...adjacentUpdates.flatMap(({ id, newItem: newItem }) => {
+      ...validAdjacentUpdates.flatMap(({ id, newItem: newItem }) => {
         const old = getItem(id)
+        if (!old) return getRegionEnd(regions, regions.length - 1)
 
         if (newItem) return [old.end, newItem.end]
         return [old.end]

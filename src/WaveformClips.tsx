@@ -80,7 +80,7 @@ function ClipsBase({
 
       const startingNow = region.itemIds.flatMap((id) => {
         const clip = getItem(id)
-        return region.start === clip.start ? clip : []
+        return clip && region.start === clip.start ? clip : []
       })
 
       startingNow.forEach((clip) => {

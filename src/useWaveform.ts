@@ -1,4 +1,4 @@
-import { useCallback, useReducer, useRef } from 'react'
+import { useCallback, useReducer, useRef, useEffect } from 'react'
 import { secondsToMs, pixelsToMs } from './utils'
 import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
 import { WaveformItem, WaveformRegion } from './WaveformState'
@@ -14,14 +14,48 @@ import { waveformStateReducer, blankState } from './waveformStateReducer'
 
 export type WaveformInterface = ReturnType<typeof useWaveform>
 
-export type GetWaveformItem = (id: string) => WaveformItem
+export type GetWaveformItem = (id: string) => WaveformItem | null
+export type GetWaveformItemDangerously = (id: string) => WaveformItem
 
-export function useWaveform(getItem: GetWaveformItem) {
+export function useWaveform(getItemFn: GetWaveformItem) {
+  const missingItems = useRef<WaveformItem['id'][]>([])
+  const getItem = useCallback(
+    (id: string) => {
+      const item = getItemFn(id)
+      if (!item) missingItems.current.push(id)
+      return item
+    },
+    [getItemFn]
+  )
+  const getItemDangerously = useCallback((id: string) => getItemFn(id)!, [
+    getItemFn
+  ])
   const svgRef = useRef<SVGSVGElement>(null)
   const [state, dispatch] = useReducer(waveformStateReducer, blankState)
 
-  const { regions } = state
+  useEffect(() => {
+    if (missingItems.current.length) {
+      const missingIds = missingItems.current
+      missingItems.current = []
+      const uniqueMissingIds = Array.from(new Set(missingIds))
+      console.log(
+        'clipwave deleting missing items: ',
+        uniqueMissingIds.join(',  ')
+      )
+      const regions = recalculateRegions(
+        state.regions,
+        getItemDangerously,
+        uniqueMissingIds.map((id) => ({ id, newItem: null }))
+      )
+      if (regions !== state.regions)
+        dispatch({
+          type: 'SET_REGIONS',
+          regions
+        })
+    }
+  }, [getItemDangerously, missingItems.current.length, state.regions])
 
+  const { regions } = state
   const selectionDoesntNeedSetAtNextTimeUpdate = useRef(false)
 
   const actions = {
@@ -87,18 +121,18 @@ export function useWaveform(getItem: GetWaveformItem) {
       (id: string) => {
         dispatch({
           type: 'SET_REGIONS',
-          regions: recalculateRegions(state.regions, getItem, [
+          regions: recalculateRegions(state.regions, getItemDangerously, [
             { id, newItem: null }
           ])
         })
       },
-      [getItem, state.regions]
+      [getItemDangerously, state.regions]
     ),
     moveItem: useCallback(
       (move: ClipDrag) => {
         const { start, end, clip } = move
         const delta = end - start
-        const target = getItem(clip.id)
+        const target = getItemDangerously(clip.id)
         const movedItem = {
           ...target,
           start: target.start + delta,
@@ -106,25 +140,25 @@ export function useWaveform(getItem: GetWaveformItem) {
         }
         dispatch({
           type: 'SET_REGIONS',
-          regions: recalculateRegions(state.regions, getItem, [
+          regions: recalculateRegions(state.regions, getItemDangerously, [
             { id: target.id, newItem: movedItem }
           ])
         })
       },
-      [getItem, state.regions]
+      [getItemDangerously, state.regions]
     ),
     stretchItem: useCallback(
       (stretch: ClipStretch) => {
         const { originKey, end, clipId } = stretch
-        const target = getItem(clipId)
+        const target = getItemDangerously(clipId)
         dispatch({
           type: 'SET_REGIONS',
-          regions: recalculateRegions(state.regions, getItem, [
+          regions: recalculateRegions(state.regions, getItemDangerously, [
             { id: clipId, newItem: { ...target, [originKey]: end } }
           ])
         })
       },
-      [getItem, state.regions]
+      [getItemDangerously, state.regions]
     )
   }
 
@@ -156,6 +190,7 @@ export function useWaveform(getItem: GetWaveformItem) {
     state,
     dispatch,
     getItem,
+    getItemDangerously,
     selectionDoesntNeedSetAtNextTimeUpdate,
     actions,
     reduceOnVisibleRegions
