@@ -8,19 +8,24 @@ export type WaveformState = {
     region: WaveformRegion
     item: WaveformItem
   } | null
-  pendingAction: import('./WaveformEvent').WaveformDragAction | null
+  pendingAction: import('./WaveformEvent').WaveformGesture | null
+  regions: WaveformRegion[]
 }
 
-export type WaveformItem =
-  | Clip
-  | {
-      type: 'Preview'
-      id: string
-      start: number
-      end: number
-    }
+export type WaveformItem = PrimaryClip | SecondaryClip
 
-export type Clip = { type: 'Clip'; id: string; start: number; end: number }
+export interface PrimaryClip {
+  clipwaveType: 'Primary'
+  id: string
+  start: number
+  end: number
+}
+export interface SecondaryClip {
+  clipwaveType: 'Secondary'
+  id: string
+  start: number
+  end: number
+}
 
 export type WaveformRegion = {
   /** milliseconds */

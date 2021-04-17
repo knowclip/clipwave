@@ -1,14 +1,15 @@
 import {
   calculateRegions,
-  newRegionsWithItem,
-  recalculateRegions
+  newRegionsWithItems,
+  recalculateRegions,
+  sortWaveformItems
 } from './calculateRegions'
 
 const item = (id: string, start: number, end: number) => ({
   id,
   start,
   end,
-  type: 'Clip' as const
+  clipwaveType: 'Primary' as const
 })
 
 const region = (start: number, ...itemIds: string[]) => ({ start, itemIds })
@@ -101,13 +102,9 @@ describe('newRegionsWithItem', () => {
 
     const newItem = item('c', 15, 45)
 
-    const { regions, waveformItemsMap } = calculateRegions(items, end)
+    const { regions } = calculateRegions(items, end)
 
-    const newRegions = newRegionsWithItem(
-      regions,
-      { ...waveformItemsMap, c: newItem },
-      newItem
-    )
+    const newRegions = newRegionsWithItems(regions, [newItem])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -122,10 +119,18 @@ describe('newRegionsWithItem', () => {
 
 describe('recalculateRegions', () => {
   it('works with last item delete', () => {
-    const items = [item('a', 10, 20), item('b', 40, 50)]
+    const a = item('a', 10, 20)
+    const b = item('b', 40, 50)
+    const map = {
+      a,
+      b
+    }
+    const items = [a, b]
     const end = 10000
-    const { regions, waveformItemsMap } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, waveformItemsMap, 'b', null)
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'b', newItem: null }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -133,16 +138,37 @@ describe('recalculateRegions', () => {
     ])
   })
 
-  it('works with last item stretch, no new item overlaps', () => {
-    const items = [item('a', 10, 20), item('b', 40, 50)]
+  it('works with large item delete', () => {
+    const a = item('a', 10, 20)
+    const b = item('b', 40, 50)
+    const c = item('c', 5, 45)
+    const map = { a, b, c }
+    const items = sortWaveformItems([a, b, c])
     const end = 10000
-    const { regions, waveformItemsMap } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      waveformItemsMap,
-      'b',
-      item('b', 40, 60)
-    )
+
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'c', newItem: null }
+    ])
+    expect(newRegions).toEqual([
+      region(0),
+      region(10, 'a'),
+      region(20),
+      region(40, 'b'),
+      endRegion(50, 10000)
+    ])
+  })
+
+  it('works with last item stretch, no new item overlaps', () => {
+    const a = item('a', 10, 20)
+    const b = item('b', 40, 50)
+    const map = { a, b }
+    const items = [a, b]
+    const end = 10000
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'b', newItem: item('b', 40, 60) }
+    ])
 
     expect(newRegions).toEqual([
       region(0),
@@ -154,18 +180,28 @@ describe('recalculateRegions', () => {
   })
 
   it('works with stretched item & overlaps', () => {
-    const items = [item('a', 10, 20), item('b', 40, 50), item('c', 5, 45)]
+    const a = item('a', 10, 20)
+    const b = item('b', 40, 50)
+    const c = item('c', 5, 45)
+    const items = sortWaveformItems([a, b, c])
+    const map = { a, b, c }
     const end = 10000
 
     const newItem = item('c', 15, 45)
 
-    const { regions, waveformItemsMap } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      { ...waveformItemsMap },
-      'c',
-      newItem
-    )
+    const { regions } = calculateRegions(items, end)
+    expect(regions).toEqual([
+      region(0),
+      region(5, 'c'),
+      region(10, 'c', 'a'),
+      region(20, 'c'),
+      region(40, 'c', 'b'),
+      region(45, 'b'),
+      endRegion(50, 10000)
+    ])
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'c', newItem }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -178,18 +214,19 @@ describe('recalculateRegions', () => {
   })
 
   it('works with shrunken item', () => {
-    const items = [item('a', 10, 20), item('b', 15, 45), item('c', 40, 50)]
+    const a = item('a', 10, 20)
+    const b = item('b', 15, 45)
+    const c = item('c', 40, 50)
+    const items = [a, b, c]
+    const map = { a, b, c }
     const end = 10000
 
     const newItem = item('b', 17, 45)
 
-    const { regions, waveformItemsMap } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      { ...waveformItemsMap, b: newItem },
-      'b',
-      newItem
-    )
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'b', newItem }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -202,18 +239,19 @@ describe('recalculateRegions', () => {
   })
 
   it('works with moved item', () => {
-    const items = [item('a', 10, 20), item('b', 20, 30), item('c', 50, 60)]
+    const a = item('a', 10, 20)
+    const b = item('b', 20, 30)
+    const c = item('c', 50, 60)
+    const items = [a, b, c]
+    const map = { a, b, c }
     const end = 10000
 
     const newItem = item('a', 55, 65)
 
-    const { regions, waveformItemsMap } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(
-      regions,
-      { ...waveformItemsMap },
-      'a',
-      newItem
-    )
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'a', newItem }
+    ])
     expect(newRegions).toEqual([
       region(0),
       region(20, 'b'),
@@ -222,6 +260,58 @@ describe('recalculateRegions', () => {
       region(55, 'c', 'a'),
       region(60, 'a'),
       endRegion(65, 10000)
+    ])
+  })
+
+  it('works with merge via move', () => {
+    const a = item('a', 10, 20)
+    const b = item('b', 30, 40)
+    const c = item('c', 50, 60)
+    const items = [a, b, c]
+    const map = { a, b, c }
+    const end = 10000
+
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'a', newItem: item('a', 25, 40) },
+      { id: 'b', newItem: null }
+    ])
+    expect(newRegions).toEqual([
+      region(0),
+      region(25, 'a'),
+      region(40),
+      region(50, 'c'),
+      endRegion(60, 10000)
+    ])
+  })
+
+  it('works with merge via stretch', () => {
+    const a = item('a', 10, 20)
+    const b = item('b', 40, 50)
+    const c = item('c', 5, 45)
+    const items = sortWaveformItems([a, b, c])
+    const map = { a, b, c }
+    const end = 10000
+
+    const { regions } = calculateRegions(items, end)
+    expect(regions).toEqual([
+      region(0),
+      region(5, 'c'),
+      region(10, 'c', 'a'),
+      region(20, 'c'),
+      region(40, 'c', 'b'),
+      region(45, 'b'),
+      endRegion(50, 10000)
+    ])
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'c', newItem: item('c', 10, 50) },
+      { id: 'a', newItem: null },
+      { id: 'b', newItem: null }
+    ])
+    expect(newRegions).toEqual([
+      region(0),
+      region(10, 'c'),
+      endRegion(50, 10000)
     ])
   })
 })

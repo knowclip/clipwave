@@ -1,13 +1,12 @@
-import React from 'react'
+import React, { ReactNode } from 'react'
 import {
   msToPixels,
   pixelsToMs,
   secondsToMs,
   secondsToPixels,
-  SELECTION_BORDER_MILLISECONDS,
   WAVEFORM_HEIGHT
 } from './utils'
-import { WaveformInterface } from './useWaveform'
+import { GetWaveformItem, WaveformInterface } from './useWaveform'
 import {
   EventHandler,
   MutableRefObject,
@@ -17,42 +16,52 @@ import {
 } from 'react'
 import {
   WaveformMousedownEvent,
-  WaveformDragAction,
-  WaveformDragCreate,
+  WaveformGesture,
+  WaveformDrag,
   WaveformDragEvent,
-  WaveformDragMove,
-  WaveformDragOf,
-  WaveformDragStretch
+  ClipDrag,
+  WaveformGestureOf,
+  ClipStretch
 } from './WaveformEvent'
-import { WaveformItem, WaveformState } from './WaveformState'
+import { WaveformItem } from './WaveformState'
 import css from './Waveform.module.scss'
 import { getClipRectProps } from './getClipRectProps'
 import { Clips } from './WaveformClips'
+import { getFinalWaveformDragAction } from './getFinalWaveformDragAction'
+import { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
+import { getWaveformMousedownAction } from './getWaveformMousedownAction'
 
 type WaveformEventHandlers = {
-  onWaveformDrag?: (event: WaveformDragOf<WaveformDragCreate>) => void
-  onClipDrag?: (event: WaveformDragOf<WaveformDragMove>) => void
-  onClipEdgeDrag?: (event: WaveformDragOf<WaveformDragStretch>) => void
+  onWaveformDrag?: (event: WaveformGestureOf<WaveformDrag>) => void
+  onClipDrag?: (event: WaveformGestureOf<ClipDrag>) => void
+  onClipEdgeDrag?: (event: WaveformGestureOf<ClipStretch>) => void
+  onClipDoubleClick?: (clip: WaveformItem) => void
+  onMouseWheel?: React.WheelEventHandler
 }
+
+export type RenderSecondaryClip = (
+  options: SecondaryClipDisplayProps
+) => ReactNode
 
 export default function Waveform({
   waveform,
   images,
   playerRef,
+  height = WAVEFORM_HEIGHT,
+  renderSecondaryClip,
   ...waveformEventHandlers
 }: {
   waveform: WaveformInterface
   images: { url: string; startSeconds: number; endSeconds: number }[]
   playerRef: MutableRefObject<HTMLVideoElement | HTMLAudioElement | null>
+  height?: number
+  renderSecondaryClip?: RenderSecondaryClip
 } & WaveformEventHandlers) {
-  const height = WAVEFORM_HEIGHT // + subtitles.totalTracksCount * SUBTITLES_CHUNK_HEIGHT
-
   const {
     viewBoxStartMs,
     durationSeconds,
     pixelsPerSecond,
-    pendingAction,
-    selection
+    pendingAction
   } = waveform.state
   const { handleMouseDown, pendingActionRef } = useWaveformMouseActions({
     waveform,
@@ -60,20 +69,29 @@ export default function Waveform({
     ...waveformEventHandlers
   })
 
-  const highlightedClipId =
-    selection?.item?.type === 'Clip' ? selection.item.id : null
+  const handleMouseWheel: React.WheelEventHandler<SVGSVGElement> = useCallback(
+    (e) => {
+      if (waveformEventHandlers.onMouseWheel)
+        waveformEventHandlers.onMouseWheel(e)
+      else {
+        waveform.actions.zoom(e.deltaY)
+      }
+    },
+    [waveform.actions, waveformEventHandlers]
+  )
 
   return (
     <svg
       ref={waveform.svgRef}
       viewBox={getViewBoxString(
         msToPixels(viewBoxStartMs, pixelsPerSecond),
-        WAVEFORM_HEIGHT
+        height
       )}
       height={height}
       style={{ background: 'gray', alignSelf: 'flex-start', width: '100%' }}
       preserveAspectRatio='xMinYMin slice'
       onMouseDown={handleMouseDown}
+      onWheel={handleMouseWheel}
     >
       <g>
         <rect
@@ -84,11 +102,11 @@ export default function Waveform({
           height={height}
         />
         <Clips
-          waveformItems={waveform.items}
-          regions={waveform.regions}
-          highlightedClipId={highlightedClipId}
+          getItem={waveform.getItem}
+          reduceOnVisibleRegions={waveform.reduceOnVisibleRegions}
           height={height}
           state={waveform.state}
+          renderSecondaryClip={renderSecondaryClip}
         />
         {pendingAction && (
           <PendingWaveformItem
@@ -96,7 +114,7 @@ export default function Waveform({
             height={height}
             rectRef={pendingActionRef}
             pixelsPerSecond={pixelsPerSecond}
-            waveformItems={waveform.items}
+            getItem={waveform.getItem}
           />
         )}
       </g>
@@ -147,7 +165,7 @@ function Cursor({
 }
 
 const WAVEFORM_ACTION_TYPE_TO_CLASSNAMES: Record<
-  WaveformDragAction['type'],
+  WaveformGesture['type'],
   string
 > = {
   CREATE: css.waveformPendingClip,
@@ -159,19 +177,23 @@ function PendingWaveformItem({
   height,
   rectRef,
   pixelsPerSecond,
-  waveformItems
+  getItem
 }: {
-  action: WaveformDragAction
+  action: WaveformGesture
   height: number
   rectRef: MutableRefObject<SVGRectElement | null>
   pixelsPerSecond: number
-  waveformItems: Record<string, WaveformItem>
+  getItem: GetWaveformItem
 }) {
   if (action.type === 'MOVE') {
-    const { start, end, clipId } = action
+    const {
+      start,
+      end,
+      clip: { id: clipId }
+    } = action
     const deltaX = start - end
 
-    const clipToMove = waveformItems[clipId]
+    const clipToMove = getItem(clipId)
     return (
       <rect
         ref={rectRef}
@@ -187,7 +209,7 @@ function PendingWaveformItem({
 
   if (action.type === 'STRETCH') {
     const { start, end, clipId } = action
-    const clipToStretch = waveformItems[clipId]
+    const clipToStretch = getItem(clipId)
     const originKey =
       Math.abs(start - clipToStretch.start) <
       Math.abs(start - clipToStretch.end)
@@ -214,8 +236,8 @@ function PendingWaveformItem({
       ref={rectRef}
       className={WAVEFORM_ACTION_TYPE_TO_CLASSNAMES[action.type]}
       {...getClipRectProps(
-        msToPixels(action.start, pixelsPerSecond),
-        msToPixels(action.end, pixelsPerSecond),
+        msToPixels(Math.min(action.start, action.end), pixelsPerSecond),
+        msToPixels(Math.max(action.start, action.end), pixelsPerSecond),
         height
       )}
     />
@@ -284,7 +306,7 @@ function useWaveformMouseActions({
       const mousedownAction = getWaveformMousedownAction(
         dataset,
         waveformMousedown,
-        state
+        waveform
       )
       if (mousedownAction)
         dispatch({
@@ -294,7 +316,13 @@ function useWaveformMouseActions({
 
       mouseDown.current = waveformMousedown
     },
-    [state, durationMilliseconds, pixelsPerSecond, dispatch]
+    [
+      state.viewBoxStartMs,
+      pixelsPerSecond,
+      durationMilliseconds,
+      waveform,
+      dispatch
+    ]
   )
 
   useEffect(() => {
@@ -320,22 +348,21 @@ function useWaveformMouseActions({
       const ms = Math.min(durationMilliseconds, msAtMouse)
 
       if (pendingAction) {
-        const event = new WaveformDragEvent(currentMouseDown, {
-          ...pendingAction,
-          end: ms,
-          waveformState: state
-        })
+        const event = new WaveformDragEvent(
+          currentMouseDown,
+          getFinalWaveformDragAction(pendingAction, ms, waveform)
+        )
         document.dispatchEvent(event)
 
         if (event.action.type === ('CREATE' as const))
           eventHandlers.onWaveformDrag?.(
-            event as WaveformDragOf<WaveformDragCreate>
+            event as WaveformGestureOf<WaveformDrag>
           )
         if (event.action.type === 'MOVE')
-          eventHandlers.onClipDrag?.(event as WaveformDragOf<WaveformDragMove>)
+          eventHandlers.onClipDrag?.(event as WaveformGestureOf<ClipDrag>)
         if (event.action.type === 'STRETCH')
           eventHandlers.onClipEdgeDrag?.(
-            event as WaveformDragOf<WaveformDragStretch>
+            event as WaveformGestureOf<ClipStretch>
           )
       }
     }
@@ -351,8 +378,7 @@ function useWaveformMouseActions({
     state,
     durationSeconds,
     eventHandlers,
-    waveform.items,
-    waveform.regions
+    waveform
   ])
 
   return {
@@ -373,48 +399,4 @@ function waveformTimeAtMousePosition(
 
   const offsetX = clientX - left
   return pixelsToMs(offsetX, pixelsPerSecond) + viewBoxStartMs
-}
-
-function getWaveformMousedownAction(
-  dataset: DOMStringMap,
-  event: WaveformMousedownEvent,
-  waveform: WaveformState
-): WaveformDragAction {
-  const ms = event.milliseconds
-  const timeStamp = event.timeStamp
-
-  if (
-    dataset &&
-    dataset.clipId &&
-    (Math.abs(Number(dataset.clipStart) - ms) <=
-      SELECTION_BORDER_MILLISECONDS ||
-      Math.abs(Number(dataset.clipEnd) - ms) <= SELECTION_BORDER_MILLISECONDS)
-  ) {
-    return {
-      type: 'STRETCH',
-      start: ms,
-      end: ms,
-      regionIndex: Number(dataset.regionIndex),
-      clipId: dataset.clipId,
-      waveformState: waveform,
-      timeStamp
-    }
-  } else if (dataset && dataset.clipId)
-    return {
-      type: 'MOVE',
-      start: ms,
-      end: ms,
-      clipId: dataset.clipId,
-      regionIndex: Number(dataset.regionIndex),
-      waveformState: waveform,
-      timeStamp
-    }
-  else
-    return {
-      type: 'CREATE',
-      start: ms,
-      end: ms,
-      waveformState: waveform,
-      timeStamp
-    }
 }

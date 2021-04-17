@@ -1,5 +1,6 @@
 import { MutableRefObject, Dispatch, useCallback } from 'react'
-import { WaveformAction } from './useWaveform'
+import { GetWaveformItem } from './useWaveform'
+import { WaveformAction } from './WaveformAction'
 import {
   secondsToMs,
   setCursorX,
@@ -24,7 +25,7 @@ export function useWaveformMediaTimeUpdate(
   svgRef: MutableRefObject<SVGElement | null>,
   selectionDoesntNeedSetAtNextTimeUpdate: MutableRefObject<boolean>,
   dispatch: Dispatch<WaveformAction>,
-  waveformItems: Record<string, WaveformItem>,
+  getItem: GetWaveformItem,
   regions: WaveformRegion[],
   state: WaveformState
 ) {
@@ -56,10 +57,6 @@ export function useWaveformMediaTimeUpdate(
         !media.paused &&
         currentSelection?.item &&
         newMilliseconds >= currentSelection.item.end
-      console.log({
-        loopImminent,
-        currentSelection: currentSelection?.item.id
-      })
       if (loopImminent && currentSelection) {
         media.currentTime = msToSeconds(currentSelection.item.start)
         return dispatch({
@@ -71,7 +68,7 @@ export function useWaveformMediaTimeUpdate(
       }
 
       const newSelectionCandidate = getNewWaveformSelectionAt(
-        waveformItems,
+        getItem,
         regions,
         newMilliseconds,
         currentSelection
@@ -105,7 +102,7 @@ export function useWaveformMediaTimeUpdate(
       svgRef,
       state,
       selectionDoesntNeedSetAtNextTimeUpdate,
-      waveformItems,
+      getItem,
       regions,
       dispatch
     ]
@@ -116,11 +113,12 @@ function isValidNewSelection(
   currentSelection: WaveformItem | null,
   newSelectionCandidate: WaveformItem | null
 ) {
+  // TODO: get rid of this knowclip-specific logic
   if (
     currentSelection &&
-    currentSelection.type === 'Clip' &&
+    currentSelection.clipwaveType === 'Primary' &&
     newSelectionCandidate &&
-    newSelectionCandidate.type === 'Preview'
+    newSelectionCandidate.clipwaveType === 'Secondary'
   ) {
     return overlapsSignificantly(
       newSelectionCandidate,
@@ -177,8 +175,12 @@ function viewBoxStartMsOnTimeUpdate(
   return state.viewBoxStartMs
 }
 
+function itemsAreEqual(a: WaveformItem, b: WaveformItem) {
+  return a.id === b.id && a.start === b.start && a.end === b.end
+}
+
 export const getNewWaveformSelectionAt = (
-  newWaveformItems: Record<string, WaveformItem>,
+  getNewWaveformItem: GetWaveformItem,
   regions: WaveformRegion[],
   newMs: number,
   currentSelection: WaveformState['selection']
@@ -186,7 +188,10 @@ export const getNewWaveformSelectionAt = (
   // TODO: optimize for non-seeking (normal playback) case
   const unchangedCurrentItem =
     currentSelection &&
-    currentSelection.item === newWaveformItems[currentSelection.item.id]
+    itemsAreEqual(
+      currentSelection.item,
+      getNewWaveformItem(currentSelection.item.id)
+    )
       ? currentSelection.item
       : null
   const stillWithinSameItem =
@@ -205,11 +210,11 @@ export const getNewWaveformSelectionAt = (
           ? unchangedCurrentItem.id
           : region.itemIds.find(
               (id) =>
-                newMs >= newWaveformItems[id].start &&
-                newMs < newWaveformItems[id].end
+                newMs >= getNewWaveformItem(id).start &&
+                newMs < getNewWaveformItem(id).end
             )
       const overlappedItem = overlappedItemId
-        ? newWaveformItems[overlappedItemId]
+        ? getNewWaveformItem(overlappedItemId)
         : null
       return overlappedItem
         ? {

@@ -1,12 +1,6 @@
 import { MouseEvent } from 'react'
 import { msToSeconds } from './utils'
-import { WaveformState } from './WaveformState'
-
-const isNode = new Function(
-  'try {return this===global;}catch(e){return false;}'
-)
-
-if (isNode()) (global as any).Event = Object
+import { WaveformItem, WaveformState } from './WaveformState'
 
 export class WaveformMousedownEvent extends Event {
   milliseconds: number
@@ -27,46 +21,47 @@ export class WaveformMousedownEvent extends Event {
 
 export class WaveformDragEvent extends Event {
   mouseDown: WaveformMousedownEvent
-  action: WaveformDragAction
+  action: WaveformGesture
 
-  constructor(mouseDown: WaveformMousedownEvent, action: WaveformDragAction) {
+  constructor(mouseDown: WaveformMousedownEvent, action: WaveformGesture) {
     super('waveformDrag')
     this.mouseDown = mouseDown
     this.action = action
   }
 }
 
-export type WaveformDragOf<T extends WaveformDragAction> = WaveformDragEvent & {
+export type WaveformGestureOf<T extends WaveformGesture> = WaveformDragEvent & {
   action: T
 }
 
-export type WaveformDragAction =
-  | WaveformDragCreate
-  | WaveformDragMove
-  | WaveformDragStretch
+export type WaveformGesture = WaveformDrag | ClipDrag | ClipStretch
 
-export type WaveformDragCreate = {
+export type WaveformDrag = {
   type: 'CREATE'
   start: number
   end: number
+  overlaps: WaveformItem['id'][]
   waveformState: WaveformState
   timeStamp: number
 }
-export type WaveformDragMove = {
+export type ClipDrag = {
   type: 'MOVE'
   start: number
   end: number
-  clipId: string
+  clip: WaveformItem
   regionIndex: number
   waveformState: WaveformState
   timeStamp: number
+  overlaps: WaveformItem['id'][]
 }
-export type WaveformDragStretch = {
+export type ClipStretch = {
   type: 'STRETCH'
+  originKey: 'start' | 'end'
   start: number
   end: number
   clipId: string
   regionIndex: number
   waveformState: WaveformState
   timeStamp: number
+  overlaps: WaveformItem['id'][]
 }

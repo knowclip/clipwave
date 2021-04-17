@@ -1,57 +1,175 @@
 import { useCallback, useReducer, useRef } from 'react'
-import { pixelsToMs, secondsToMs } from './utils'
+import { secondsToMs, pixelsToMs } from './utils'
 import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
-import { WaveformDragAction } from './WaveformEvent'
 import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
-import { bound } from './utils/bound'
+import { elementWidth } from './utils/elementWidth'
+import {
+  calculateRegions,
+  getRegionEnd,
+  newRegionsWithItems,
+  recalculateRegions
+} from './utils/calculateRegions'
+import { ClipDrag, ClipStretch } from './WaveformEvent'
+import { waveformStateReducer } from './waveformStateReducer'
 
-const initialState: WaveformState = {
+export const blankState: WaveformState = {
   cursorMs: 0,
   durationSeconds: 0,
   viewBoxStartMs: 0,
   pixelsPerSecond: 50,
   selection: null,
-  pendingAction: null
+  pendingAction: null,
+  regions: []
 }
 
 export type WaveformInterface = ReturnType<typeof useWaveform>
 
-export function useWaveform(
-  regions: WaveformRegion[],
-  items: Record<string, WaveformItem>
-) {
-  const svgRef = useRef<SVGSVGElement>(null)
-  const [state, dispatch] = useReducer(updateViewState, initialState)
-  const resetWaveformState = useCallback(
-    (media: HTMLVideoElement | HTMLAudioElement | null) => {
-      dispatch({ type: 'RESET', durationSeconds: media?.duration || 0 })
-    },
-    [dispatch]
-  )
+export type GetWaveformItem = (id: string) => WaveformItem
 
-  const selectItem = useCallback(
-    (region: WaveformRegion, item: WaveformItem) => {
-      dispatch({
-        type: 'SELECT_ITEM',
-        region,
-        item,
-        regionIndex: regions.indexOf(region)
-      })
-    },
-    [regions]
-  )
+export function useWaveform(getItem: GetWaveformItem) {
+  const svgRef = useRef<SVGSVGElement>(null)
+  const [state, dispatch] = useReducer(waveformStateReducer, blankState)
+
+  const { regions } = state
 
   const selectionDoesntNeedSetAtNextTimeUpdate = useRef(false)
+
+  const actions = {
+    resetWaveformState: useCallback(
+      (
+        media: HTMLVideoElement | HTMLAudioElement | null,
+        sortedWaveformItems: WaveformItem[]
+      ) => {
+        const durationSeconds = media?.duration || 0
+        const { regions } = calculateRegions(
+          sortedWaveformItems,
+          secondsToMs(durationSeconds)
+        )
+        dispatch({ type: 'RESET', durationSeconds, regions })
+      },
+      []
+    ),
+    selectItem: useCallback(
+      (region: WaveformRegion, item: WaveformItem) => {
+        dispatch({
+          type: 'SELECT_ITEM',
+          region,
+          item,
+          regionIndex: regions.indexOf(region)
+        })
+      },
+      [regions]
+    ),
+    zoom: useCallback((deltaY: number) => {
+      if (svgRef.current)
+        dispatch({
+          type: 'ZOOM',
+          delta: deltaY,
+          svgWidth: elementWidth(svgRef.current)
+        })
+    }, []),
+    clear: useCallback(() => {
+      dispatch({
+        type: 'RESET',
+        durationSeconds: state.durationSeconds,
+        regions: state.regions
+      })
+    }, [state.durationSeconds, state.regions]),
+    addItem: useCallback(
+      (item: WaveformItem) => {
+        dispatch({
+          type: 'SET_REGIONS',
+          regions: newRegionsWithItems(state.regions, [item])
+        })
+      },
+      [state.regions]
+    ),
+    addItems: useCallback(
+      (items: WaveformItem[]) => {
+        dispatch({
+          type: 'SET_REGIONS',
+          regions: newRegionsWithItems(state.regions, items)
+        })
+      },
+      [state.regions]
+    ),
+    deleteItem: useCallback(
+      (id: string) => {
+        dispatch({
+          type: 'SET_REGIONS',
+          regions: recalculateRegions(state.regions, getItem, [
+            { id, newItem: null }
+          ])
+        })
+      },
+      [getItem, state.regions]
+    ),
+    moveItem: useCallback(
+      (move: ClipDrag) => {
+        const { start, end, clip } = move
+        const delta = end - start
+        const target = getItem(clip.id)
+        const movedItem = {
+          ...target,
+          start: target.start + delta,
+          end: target.end + delta
+        }
+        dispatch({
+          type: 'SET_REGIONS',
+          regions: recalculateRegions(state.regions, getItem, [
+            { id: target.id, newItem: movedItem }
+          ])
+        })
+      },
+      [getItem, state.regions]
+    ),
+    stretchItem: useCallback(
+      (stretch: ClipStretch) => {
+        const { originKey, end, clipId } = stretch
+        const target = getItem(clipId)
+        dispatch({
+          type: 'SET_REGIONS',
+          regions: recalculateRegions(state.regions, getItem, [
+            { id: clipId, newItem: { ...target, [originKey]: end } }
+          ])
+        })
+      },
+      [getItem, state.regions]
+    )
+  }
+
+  const reduceOnVisibleRegions: ReduceOnVisibleRegions = useCallback(
+    (callback, initialAccumulator) => {
+      const { viewBoxStartMs, pixelsPerSecond } = state
+
+      return reduceWhile(
+        regions,
+        initialAccumulator,
+        (region) =>
+          region.start <=
+          viewBoxStartMs +
+            pixelsToMs(MAX_WAVEFORM_VIEWPORT_WIDTH, pixelsPerSecond),
+        (acc, region, regionIndex) => {
+          if (getRegionEnd(regions, regionIndex) < viewBoxStartMs) {
+            return acc
+          }
+
+          return callback(acc, region, regionIndex)
+        }
+      )
+    },
+    [regions, state]
+  )
 
   const waveformInterface = {
     svgRef,
     state,
     dispatch,
-    resetWaveformState,
     regions,
-    items,
-    selectItem: selectItem,
-    selectionDoesntNeedSetAtNextTimeUpdate
+    getItem,
+    selectionDoesntNeedSetAtNextTimeUpdate,
+    actions,
+    reduceOnVisibleRegions
   }
 
   return {
@@ -59,7 +177,7 @@ export function useWaveform(
       svgRef,
       selectionDoesntNeedSetAtNextTimeUpdate,
       dispatch,
-      items,
+      getItem,
       regions,
       state
     ),
@@ -67,99 +185,23 @@ export function useWaveform(
   }
 }
 
-export type WaveformAction =
-  | {
-      type: 'NAVIGATE_TO_TIME'
-      ms: number
-      viewBoxStartMs?: number
-      selection?: WaveformState['selection'] | null
-    }
-  | { type: 'START_WAVEFORM_MOUSE_ACTION'; action: WaveformDragAction | null }
-  | { type: 'CONTINUE_WAVEFORM_MOUSE_ACTION'; ms: number }
-  | { type: 'CLEAR_WAVEFORM_MOUSE_ACTION' }
-  | { type: 'RESET'; durationSeconds: number }
-  | { type: 'ZOOM'; delta: number; svgWidth: number }
-  | {
-      type: 'SELECT_ITEM'
-      region: WaveformRegion
-      regionIndex: number
-      item: WaveformItem
-    }
-
-function updateViewState(
-  state: WaveformState,
-  action: WaveformAction
-): WaveformState {
-  switch (action.type) {
-    case 'RESET':
-      return { ...initialState, durationSeconds: action.durationSeconds }
-    case 'START_WAVEFORM_MOUSE_ACTION':
-      return {
-        ...state,
-        pendingAction: action.action
-      }
-    case 'CONTINUE_WAVEFORM_MOUSE_ACTION':
-      return {
-        ...state,
-        pendingAction: state.pendingAction
-          ? {
-              ...state.pendingAction,
-              end: action.ms
-            }
-          : null
-      }
-    case 'NAVIGATE_TO_TIME': {
-      const { ms, viewBoxStartMs, selection } = action
-      return {
-        ...state,
-        cursorMs: ms,
-        viewBoxStartMs:
-          typeof viewBoxStartMs === 'number'
-            ? viewBoxStartMs
-            : state.viewBoxStartMs,
-        selection:
-          typeof selection !== 'undefined' ? selection : state.selection
-      }
-    }
-    case 'ZOOM': {
-      const newPixelsPerSecond = bound(state.pixelsPerSecond + action.delta, [
-        10,
-        200
-      ])
-      const oldVisibleTimeSpan = pixelsToMs(
-        action.svgWidth,
-        state.pixelsPerSecond
-      )
-      const cursorScreenOffset = state.cursorMs - state.viewBoxStartMs
-      const cursorScreenOffsetRatio = cursorScreenOffset / oldVisibleTimeSpan
-      const newVisibleTimeSpan = pixelsToMs(action.svgWidth, newPixelsPerSecond)
-      const newCursorScreenOffset = Math.round(
-        cursorScreenOffsetRatio * newVisibleTimeSpan
-      )
-      const potentialNewViewBoxStartMs = state.cursorMs - newCursorScreenOffset
-      return {
-        ...state,
-        pixelsPerSecond: newPixelsPerSecond,
-        viewBoxStartMs: bound(potentialNewViewBoxStartMs, [
-          0,
-          secondsToMs(state.durationSeconds) - newVisibleTimeSpan
-        ])
-      }
-    }
-
-    case 'SELECT_ITEM':
-      return {
-        ...state,
-        selection: {
-          region: action.region,
-          regionIndex: action.regionIndex,
-          item: action.item
-        }
-      }
-
-    default:
-      return state
-  }
-}
-
 export const MAX_WAVEFORM_VIEWPORT_WIDTH = 3000
+
+type ReduceOnVisibleRegions = <T>(
+  callback: (accumulator: T, region: WaveformRegion, regionIndex: number) => T,
+  initialAccumulator: T
+) => T
+
+function reduceWhile<T, U>(
+  arr: T[],
+  acc: U,
+  test: (element: T, index: number) => boolean,
+  reducer: (acc: U, element: T, index: number) => U
+) {
+  let currentAcc = acc
+  for (let i = 0; i < arr.length && test(arr[i], i); i++) {
+    currentAcc = reducer(currentAcc, arr[i], i)
+  }
+
+  return currentAcc
+}
