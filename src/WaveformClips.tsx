@@ -110,7 +110,7 @@ function ClipsBase({
     }, acc)
   }, [reduceOnVisibleRegions, getItem])
 
-  const selectionId = selection?.item?.id
+  const selectionId = selection.item
 
   return (
     <g>

@@ -18,11 +18,11 @@ export type GetWaveformItem = (id: string) => WaveformItem | null
 export type GetWaveformItemDangerously = (id: string) => WaveformItem
 
 export function useWaveform(getItemFn: GetWaveformItem) {
-  const missingItems = useRef<WaveformItem['id'][]>([])
+  const missingItems = useRef(new Set<WaveformItem['id']>())
   const getItem = useCallback(
     (id: string) => {
       const item = getItemFn(id)
-      if (!item) missingItems.current.push(id)
+      if (!item) missingItems.current.add(id)
       return item
     },
     [getItemFn]
@@ -34,10 +34,10 @@ export function useWaveform(getItemFn: GetWaveformItem) {
   const [state, dispatch] = useReducer(waveformStateReducer, blankState)
 
   useEffect(() => {
-    if (missingItems.current.length) {
+    if (missingItems.current.size) {
       const missingIds = missingItems.current
-      missingItems.current = []
-      const uniqueMissingIds = Array.from(new Set(missingIds))
+      missingItems.current = new Set()
+      const uniqueMissingIds = Array.from(missingIds)
       console.log(
         'clipwave deleting missing items: ',
         uniqueMissingIds.join(',  ')
@@ -53,7 +53,7 @@ export function useWaveform(getItemFn: GetWaveformItem) {
           regions
         })
     }
-  }, [getItemDangerously, missingItems.current.length, state.regions])
+  }, [getItemDangerously, missingItems.current.size, state.regions])
 
   const { regions } = state
   const selectionDoesntNeedSetAtNextTimeUpdate = useRef(false)
@@ -193,7 +193,16 @@ export function useWaveform(getItemFn: GetWaveformItem) {
     getItemDangerously,
     selectionDoesntNeedSetAtNextTimeUpdate,
     actions,
-    reduceOnVisibleRegions
+    reduceOnVisibleRegions,
+    getSelection: useCallback(
+      () => ({
+        selection: state.selection,
+        item: state.selection.item ? getItem(state.selection.item) : null,
+        region: (state.regions[state.selection.regionIndex] ||
+          null) as WaveformRegion | null
+      }),
+      [getItem, state.regions, state.selection]
+    )
   }
 
   return {

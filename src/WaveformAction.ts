@@ -6,7 +6,7 @@ export type WaveformAction =
       type: 'NAVIGATE_TO_TIME'
       ms: number
       viewBoxStartMs?: number
-      selection?: WaveformState['selection'] | null
+      selection: WaveformState['selection']
     }
   | { type: 'START_WAVEFORM_MOUSE_ACTION'; action: WaveformGesture | null }
   | { type: 'CONTINUE_WAVEFORM_MOUSE_ACTION'; ms: number }

@@ -8,7 +8,7 @@ export const blankState: WaveformState = {
   durationSeconds: 0,
   viewBoxStartMs: 0,
   pixelsPerSecond: 50,
-  selection: null,
+  selection: { regionIndex: 0, item: null },
   pendingAction: null,
   regions: []
 }
@@ -23,6 +23,7 @@ export function waveformStateReducer(
         ...blankState,
         durationSeconds: action.durationSeconds,
         regions: action.regions
+        // TODO: select item at current time
       }
     case 'START_WAVEFORM_MOUSE_ACTION':
       return {
@@ -48,8 +49,7 @@ export function waveformStateReducer(
           typeof viewBoxStartMs === 'number'
             ? viewBoxStartMs
             : state.viewBoxStartMs,
-        selection:
-          typeof selection !== 'undefined' ? selection : state.selection
+        selection: selection || state.selection
       }
     }
     case 'ZOOM': {
@@ -82,9 +82,8 @@ export function waveformStateReducer(
       return {
         ...state,
         selection: {
-          region: action.region,
           regionIndex: action.regionIndex,
-          item: action.item
+          item: action.item.id
         }
       }
 
