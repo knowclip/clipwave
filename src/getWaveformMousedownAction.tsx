@@ -36,7 +36,7 @@ export function getWaveformMousedownAction(
       type: 'MOVE',
       start: ms,
       end: ms,
-      clip: getItem(dataset.clipId),
+      clipId: dataset.clipId,
       regionIndex: Number(dataset.regionIndex),
       waveformState: state,
       timeStamp,

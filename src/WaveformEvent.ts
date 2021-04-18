@@ -48,7 +48,7 @@ export type ClipDrag = {
   type: 'MOVE'
   start: number
   end: number
-  clip: WaveformItem
+  clipId: WaveformItem['id']
   regionIndex: number
   waveformState: WaveformState
   timeStamp: number

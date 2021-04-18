@@ -130,9 +130,9 @@ export function useWaveform(getItemFn: GetWaveformItem) {
     ),
     moveItem: useCallback(
       (move: ClipDrag) => {
-        const { start, end, clip } = move
+        const { start, end, clipId } = move
         const delta = end - start
-        const target = getItemDangerously(clip.id)
+        const target = getItemDangerously(clipId)
         const movedItem = {
           ...target,
           start: target.start + delta,

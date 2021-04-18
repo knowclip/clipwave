@@ -186,11 +186,7 @@ function PendingWaveformItem({
   getItem: GetWaveformItem
 }) {
   if (action.type === 'MOVE') {
-    const {
-      start,
-      end,
-      clip: { id: clipId }
-    } = action
+    const { start, end, clipId } = action
     const deltaX = end - start
 
     const clipToMove = getItem(clipId)
