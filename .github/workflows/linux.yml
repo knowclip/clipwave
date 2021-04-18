@@ -19,6 +19,5 @@ jobs:
     - name: yarn install, build and test
       run: |
         yarn install --frozen-lockfile
-        yarn format --list-different
         yarn build
         yarn test
