@@ -7,7 +7,7 @@ export function getWaveformMousedownAction(
   event: WaveformMousedownEvent,
   waveform: WaveformInterface
 ): WaveformGesture {
-  const { state, getItem } = waveform
+  const { state } = waveform
   const ms = event.milliseconds
   const timeStamp = event.timeStamp
 

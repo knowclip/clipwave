@@ -49,10 +49,7 @@ export function getFinalWaveformDragAction(
       }
     }
     case 'MOVE': {
-      const {
-        start,
-        clip: { id: clipId }
-      } = pendingAction
+      const { start, clipId } = pendingAction
       const deltaX = end - start
       const regionsEnd = getRegionEnd(
         waveformState.regions,
@@ -71,14 +68,8 @@ export function getFinalWaveformDragAction(
         end: start + boundedDeltaX,
         overlaps: getOverlaps(
           {
-            start: Math.min(
-              pendingAction.clip.start,
-              pendingAction.clip.start + boundedDeltaX
-            ),
-            end: Math.max(
-              pendingAction.clip.end,
-              pendingAction.clip.end + boundedDeltaX
-            )
+            start: Math.min(target.start, target.start + boundedDeltaX),
+            end: Math.max(target.end, target.end + boundedDeltaX)
           },
           clipId
         )
