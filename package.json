@@ -1,6 +1,6 @@
 {
   "name": "clipwave",
-  "version": "0.1.7-4",
+  "version": "0.1.7-6",
   "description": "A React component for an interactive audio waveform",
   "author": "justinsilvestre",
   "license": "AGPL-3.0",
