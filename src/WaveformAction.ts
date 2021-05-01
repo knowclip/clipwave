@@ -15,13 +15,13 @@ export type WaveformAction =
   | { type: 'ZOOM'; delta: number; svgWidth: number }
   | {
       type: 'SELECT_ITEM'
-      region: WaveformRegion
       regionIndex: number
-      item: WaveformItem
+      itemId: WaveformItem['id']
     }
   | {
       type: 'SET_REGIONS'
       regions: WaveformRegion[]
+      newSelection?: WaveformState['selection']
     }
 
 // create

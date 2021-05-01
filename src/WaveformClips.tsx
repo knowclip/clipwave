@@ -136,18 +136,17 @@ function ClipsBase({
           } else return display
         })
       )}
+      {highlightedClipDisplay}
       {useMemo(
         () =>
           renderSecondaryClip &&
-          secondary.map((clipSpecs) =>
-            renderSecondaryClip({
-              ...clipSpecs,
-              pixelsPerSecond
-            })
-          ),
+          secondary.map((clipSpecs) => (
+            <React.Fragment key={clipSpecs.clip.id}>
+              {renderSecondaryClip({ ...clipSpecs, pixelsPerSecond })}
+            </React.Fragment>
+          )),
         [secondary, renderSecondaryClip, pixelsPerSecond]
       )}
-      {highlightedClipDisplay}
     </g>
   )
 }

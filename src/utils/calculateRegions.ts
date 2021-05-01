@@ -155,7 +155,7 @@ export function recalculateRegions(
     for (const id of region.itemIds) {
       const update = getUpdate(id)
       const item = update ? update.newItem : getItem(id)
-      if (item && !itemsToBeIncluded.includes(item))
+      if (item && !itemsToBeIncluded.some((i) => i.id === item.id))
         itemsToBeIncluded.push(item)
     }
   }

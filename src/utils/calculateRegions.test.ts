@@ -138,6 +138,20 @@ describe('recalculateRegions', () => {
     ])
   })
 
+  it('works with lone item delete', () => {
+    const a = item('a', 10, 20)
+    const map = {
+      a
+    }
+    const items = [a]
+    const end = 10000
+    const { regions } = calculateRegions(items, end)
+    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
+      { id: 'a', newItem: null }
+    ])
+    expect(newRegions).toEqual([endRegion(0, 10000)])
+  })
+
   it('works with large item delete', () => {
     const a = item('a', 10, 20)
     const b = item('b', 40, 50)

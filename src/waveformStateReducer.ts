@@ -83,14 +83,15 @@ export function waveformStateReducer(
         ...state,
         selection: {
           regionIndex: action.regionIndex,
-          item: action.item.id
+          item: action.itemId
         }
       }
 
     case 'SET_REGIONS': {
       return {
         ...state,
-        regions: action.regions
+        regions: action.regions,
+        selection: action.newSelection || state.selection
       }
     }
 

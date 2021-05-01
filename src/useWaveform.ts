@@ -1,6 +1,15 @@
-import { useCallback, useReducer, useRef, useEffect } from 'react'
-import { secondsToMs, pixelsToMs } from './utils'
-import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
+import { useCallback, useReducer, useRef, useEffect, useMemo } from 'react'
+import {
+  secondsToMs,
+  pixelsToMs,
+  setCursorX,
+  msToSeconds,
+  msToPixels
+} from './utils'
+import {
+  useWaveformMediaTimeUpdate,
+  getNewWaveformSelectionAt
+} from './useWaveformMediaTimeUpdate'
 import { WaveformItem, WaveformRegion } from './WaveformState'
 import { elementWidth } from './utils/elementWidth'
 import {
@@ -32,28 +41,52 @@ export function useWaveform(getItemFn: GetWaveformItem) {
   ])
   const svgRef = useRef<SVGSVGElement>(null)
   const [state, dispatch] = useReducer(waveformStateReducer, blankState)
+  const selection = useMemo(() => {
+    return {
+      selection: state.selection,
+      item: state.selection.item ? getItem(state.selection.item) : null,
+      region: (state.regions[state.selection.regionIndex] ||
+        null) as WaveformRegion | null
+    }
+  }, [getItem, state.regions, state.selection])
 
   useEffect(() => {
     if (missingItems.current.size) {
-      const missingIds = missingItems.current
+      const currentMissingIds = missingItems.current
       missingItems.current = new Set()
-      const uniqueMissingIds = Array.from(missingIds)
       console.log(
         'clipwave deleting missing items: ',
-        uniqueMissingIds.join(',  ')
+        [...currentMissingIds].join(',  ')
       )
       const regions = recalculateRegions(
         state.regions,
         getItemDangerously,
-        uniqueMissingIds.map((id) => ({ id, newItem: null }))
+        Array.from(currentMissingIds).map((id) => ({ id, newItem: null }))
       )
-      if (regions !== state.regions)
+      if (regions !== state.regions) {
+        const currentRegion = state.regions[state.selection.regionIndex]
+        const newSelection = getNewWaveformSelectionAt(
+          getItemDangerously,
+          regions,
+          currentRegion.start,
+          state.selection
+        )
+        console.log({ newSelection })
         dispatch({
           type: 'SET_REGIONS',
-          regions
+          regions,
+          // TODO: calculate this in recalculateRegions to avoid extra loop
+          newSelection
         })
+      }
     }
-  }, [getItemDangerously, missingItems.current.size, state.regions])
+  }, [
+    getItemDangerously,
+    missingItems.current.size,
+    state.regions,
+    state.selection,
+    state.selection.item
+  ])
 
   const { regions } = state
   const selectionDoesntNeedSetAtNextTimeUpdate = useRef(false)
@@ -74,15 +107,36 @@ export function useWaveform(getItemFn: GetWaveformItem) {
       []
     ),
     selectItem: useCallback(
-      (region: WaveformRegion, item: WaveformItem) => {
+      (regionIndex: number, itemId: WaveformItem['id']) => {
         dispatch({
           type: 'SELECT_ITEM',
-          region,
-          item,
-          regionIndex: regions.indexOf(region)
+          itemId,
+          regionIndex
         })
       },
-      [regions]
+      []
+    ),
+    selectItemAndSeekTo: useCallback(
+      (
+        regionIndex: number,
+        itemId: WaveformItem['id'],
+        player: HTMLVideoElement | HTMLAudioElement | null,
+        newTimeMilliseconds: number
+      ) => {
+        dispatch({
+          type: 'SELECT_ITEM',
+          itemId,
+          regionIndex
+        })
+        const newTimeSeconds = msToSeconds(newTimeMilliseconds)
+        if (player && player.currentTime !== newTimeSeconds) {
+          if (!player.paused)
+            selectionDoesntNeedSetAtNextTimeUpdate.current = true
+          setCursorX(msToPixels(newTimeMilliseconds, state.pixelsPerSecond))
+          player.currentTime = newTimeSeconds
+        }
+      },
+      [state.pixelsPerSecond]
     ),
     zoom: useCallback((deltaY: number) => {
       if (svgRef.current)
@@ -191,18 +245,9 @@ export function useWaveform(getItemFn: GetWaveformItem) {
     dispatch,
     getItem,
     getItemDangerously,
-    selectionDoesntNeedSetAtNextTimeUpdate,
     actions,
     reduceOnVisibleRegions,
-    getSelection: useCallback(
-      () => ({
-        selection: state.selection,
-        item: state.selection.item ? getItem(state.selection.item) : null,
-        region: (state.regions[state.selection.regionIndex] ||
-          null) as WaveformRegion | null
-      }),
-      [getItem, state.regions, state.selection]
-    )
+    getSelection: useCallback(() => selection, [selection])
   }
 
   return {
