@@ -35,9 +35,8 @@ export function getFinalWaveformDragAction(
       return {
         ...pendingAction,
         waveformState,
-        // TODO: verify if this should this really be sorted here?
-        start: Math.min(pendingAction.start, end),
-        end: Math.max(pendingAction.start, end),
+        start: pendingAction.start,
+        end: pendingAction.end,
         // bound?
         overlaps: getOverlaps(
           {

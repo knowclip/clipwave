@@ -26,7 +26,10 @@ export type WaveformInterface = ReturnType<typeof useWaveform>
 export type GetWaveformItem = (id: string) => WaveformItem | null
 export type GetWaveformItemDangerously = (id: string) => WaveformItem
 
-export function useWaveform(getItemFn: GetWaveformItem) {
+export function useWaveform(
+  getItemFn: GetWaveformItem,
+  id: string = 'waveform'
+) {
   const missingItems = useRef(new Set<WaveformItem['id']>())
   const getItem = useCallback(
     (id: string) => {
@@ -91,130 +94,129 @@ export function useWaveform(getItemFn: GetWaveformItem) {
   const { regions } = state
   const selectionDoesntNeedSetAtNextTimeUpdate = useRef(false)
 
-  const actions = {
-    resetWaveformState: useCallback(
-      (
-        media: HTMLVideoElement | HTMLAudioElement | null,
-        sortedWaveformItems: WaveformItem[]
-      ) => {
-        const durationSeconds = media?.duration || 0
-        const { regions } = calculateRegions(
-          sortedWaveformItems,
-          secondsToMs(durationSeconds)
-        )
-        dispatch({ type: 'RESET', durationSeconds, regions })
-      },
-      []
-    ),
-    selectItem: useCallback(
-      (regionIndex: number, itemId: WaveformItem['id']) => {
-        dispatch({
-          type: 'SELECT_ITEM',
-          itemId,
-          regionIndex
-        })
-      },
-      []
-    ),
-    selectItemAndSeekTo: useCallback(
-      (
-        regionIndex: number,
-        itemId: WaveformItem['id'],
-        player: HTMLVideoElement | HTMLAudioElement | null,
-        newTimeMilliseconds: number
-      ) => {
-        dispatch({
-          type: 'SELECT_ITEM',
-          itemId,
-          regionIndex
-        })
-        const newTimeSeconds = msToSeconds(newTimeMilliseconds)
-        if (player && player.currentTime !== newTimeSeconds) {
-          if (!player.paused)
-            selectionDoesntNeedSetAtNextTimeUpdate.current = true
-          setCursorX(msToPixels(newTimeMilliseconds, state.pixelsPerSecond))
-          player.currentTime = newTimeSeconds
-        }
-      },
-      [state.pixelsPerSecond]
-    ),
-    zoom: useCallback((deltaY: number) => {
-      if (svgRef.current)
-        dispatch({
-          type: 'ZOOM',
-          delta: deltaY,
-          svgWidth: elementWidth(svgRef.current)
-        })
-    }, []),
-    clear: useCallback(() => {
+  const resetWaveformState = useCallback(
+    (
+      media: HTMLVideoElement | HTMLAudioElement | null,
+      sortedWaveformItems: WaveformItem[]
+    ) => {
+      const durationSeconds = media?.duration || 0
+      const { regions } = calculateRegions(
+        sortedWaveformItems,
+        secondsToMs(durationSeconds)
+      )
+      dispatch({ type: 'RESET', durationSeconds, regions })
+    },
+    []
+  )
+
+  const selectItem = useCallback(
+    (regionIndex: number, itemId: WaveformItem['id']) => {
       dispatch({
-        type: 'RESET',
-        durationSeconds: state.durationSeconds,
-        regions: state.regions
+        type: 'SELECT_ITEM',
+        itemId,
+        regionIndex
       })
-    }, [state.durationSeconds, state.regions]),
-    addItem: useCallback(
-      (item: WaveformItem) => {
-        dispatch({
-          type: 'SET_REGIONS',
-          regions: newRegionsWithItems(state.regions, [item])
-        })
-      },
-      [state.regions]
-    ),
-    addItems: useCallback(
-      (items: WaveformItem[]) => {
-        dispatch({
-          type: 'SET_REGIONS',
-          regions: newRegionsWithItems(state.regions, items)
-        })
-      },
-      [state.regions]
-    ),
-    deleteItem: useCallback(
-      (id: string) => {
-        dispatch({
-          type: 'SET_REGIONS',
-          regions: recalculateRegions(state.regions, getItemDangerously, [
-            { id, newItem: null }
-          ])
-        })
-      },
-      [getItemDangerously, state.regions]
-    ),
-    moveItem: useCallback(
-      (move: ClipDrag) => {
-        const { start, end, clipId } = move
-        const delta = end - start
-        const target = getItemDangerously(clipId)
-        const movedItem = {
-          ...target,
-          start: target.start + delta,
-          end: target.end + delta
-        }
-        dispatch({
-          type: 'SET_REGIONS',
-          regions: recalculateRegions(state.regions, getItemDangerously, [
-            { id: target.id, newItem: movedItem }
-          ])
-        })
-      },
-      [getItemDangerously, state.regions]
-    ),
-    stretchItem: useCallback(
-      (stretch: ClipStretch) => {
-        const { originKey, end, clipId } = stretch
-        const target = getItemDangerously(clipId)
-        dispatch({
-          type: 'SET_REGIONS',
-          regions: recalculateRegions(state.regions, getItemDangerously, [
-            { id: clipId, newItem: { ...target, [originKey]: end } }
-          ])
-        })
-      },
-      [getItemDangerously, state.regions]
-    )
-  }
+    },
+    []
+  )
+  const selectItemAndSeekTo = useCallback(
+    (
+      regionIndex: number,
+      itemId: WaveformItem['id'],
+      player: HTMLVideoElement | HTMLAudioElement | null,
+      newTimeMilliseconds: number
+    ) => {
+      dispatch({
+        type: 'SELECT_ITEM',
+        itemId,
+        regionIndex
+      })
+      const newTimeSeconds = msToSeconds(newTimeMilliseconds)
+      if (player && player.currentTime !== newTimeSeconds) {
+        if (!player.paused)
+          selectionDoesntNeedSetAtNextTimeUpdate.current = true
+        setCursorX(msToPixels(newTimeMilliseconds, state.pixelsPerSecond))
+        player.currentTime = newTimeSeconds
+      }
+    },
+    [state.pixelsPerSecond]
+  )
+  const zoom = useCallback((deltaY: number) => {
+    if (svgRef.current)
+      dispatch({
+        type: 'ZOOM',
+        delta: deltaY,
+        svgWidth: elementWidth(svgRef.current)
+      })
+  }, [])
+  const clear = useCallback(() => {
+    dispatch({
+      type: 'RESET',
+      durationSeconds: state.durationSeconds,
+      regions: state.regions
+    })
+  }, [state.durationSeconds, state.regions])
+  const addItem = useCallback(
+    (item: WaveformItem) => {
+      dispatch({
+        type: 'SET_REGIONS',
+        regions: newRegionsWithItems(state.regions, [item])
+      })
+    },
+    [state.regions]
+  )
+  const addItems = useCallback(
+    (items: WaveformItem[]) => {
+      dispatch({
+        type: 'SET_REGIONS',
+        regions: newRegionsWithItems(state.regions, items)
+      })
+    },
+    [state.regions]
+  )
+  const deleteItem = useCallback(
+    (id: string) => {
+      dispatch({
+        type: 'SET_REGIONS',
+        regions: recalculateRegions(state.regions, getItemDangerously, [
+          { id, newItem: null }
+        ])
+      })
+    },
+    [getItemDangerously, state.regions]
+  )
+  const moveItem = useCallback(
+    (move: ClipDrag) => {
+      const { start, end, clipId } = move
+      const delta = end - start
+      const target = getItemDangerously(clipId)
+      const movedItem = {
+        ...target,
+        start: target.start + delta,
+        end: target.end + delta
+      }
+      dispatch({
+        type: 'SET_REGIONS',
+        regions: recalculateRegions(state.regions, getItemDangerously, [
+          { id: target.id, newItem: movedItem }
+        ])
+      })
+    },
+    [getItemDangerously, state.regions]
+  )
+  const stretchItem = useCallback(
+    (stretch: ClipStretch) => {
+      const { originKey, end, clipId } = stretch
+      const target = getItemDangerously(clipId)
+      dispatch({
+        type: 'SET_REGIONS',
+        regions: recalculateRegions(state.regions, getItemDangerously, [
+          { id: clipId, newItem: { ...target, [originKey]: end } }
+        ])
+      })
+    },
+    [getItemDangerously, state.regions]
+  )
 
   const reduceOnVisibleRegions: ReduceOnVisibleRegions = useCallback(
     (callback, initialAccumulator) => {
@@ -239,28 +241,72 @@ export function useWaveform(getItemFn: GetWaveformItem) {
     [regions, state]
   )
 
-  const waveformInterface = {
+  const getSelection = useCallback(() => selection, [selection])
+  const onTimeUpdate = useWaveformMediaTimeUpdate(
     svgRef,
-    state,
+    selectionDoesntNeedSetAtNextTimeUpdate,
     dispatch,
     getItem,
-    getItemDangerously,
-    actions,
-    reduceOnVisibleRegions,
-    getSelection: useCallback(() => selection, [selection])
-  }
+    regions,
+    state
+  )
 
-  return {
-    onTimeUpdate: useWaveformMediaTimeUpdate(
+  const waveformInterface = useMemo(
+    () => ({
       svgRef,
-      selectionDoesntNeedSetAtNextTimeUpdate,
+      state,
       dispatch,
       getItem,
-      regions,
-      state
-    ),
-    ...waveformInterface
-  }
+      getItemDangerously,
+      reduceOnVisibleRegions,
+      getSelection,
+      onTimeUpdate,
+      actions: {
+        resetWaveformState,
+        selectItem,
+        selectItemAndSeekTo,
+        zoom,
+        clear,
+        addItem,
+        addItems,
+        deleteItem,
+        moveItem,
+        stretchItem
+      }
+    }),
+    [
+      addItem,
+      addItems,
+      clear,
+      deleteItem,
+      getItem,
+      getItemDangerously,
+      getSelection,
+      moveItem,
+      onTimeUpdate,
+      reduceOnVisibleRegions,
+      resetWaveformState,
+      selectItem,
+      selectItemAndSeekTo,
+      state,
+      stretchItem,
+      zoom
+    ]
+  )
+
+  useEffect(() => {
+    const handler = (e: ClipwaveRegionsUpdateEvent) => {
+      if (e.waveformId === id) e.callback(waveformInterface)
+    }
+    window.addEventListener('clipwave-regions-update', handler as EventListener)
+    return () =>
+      window.removeEventListener(
+        'clipwave-regions-update',
+        handler as EventListener
+      )
+  }, [id, waveformInterface])
+
+  return waveformInterface
 }
 
 export const MAX_WAVEFORM_VIEWPORT_WIDTH = 3000
@@ -282,4 +328,18 @@ function reduceWhile<T, U>(
   }
 
   return currentAcc
+}
+
+export class ClipwaveRegionsUpdateEvent extends Event {
+  waveformId: string
+  callback: (waveform: WaveformInterface) => void
+
+  constructor(
+    waveformId: string,
+    callback: (waveform: WaveformInterface) => void
+  ) {
+    super('clipwave-regions-update')
+    this.waveformId = waveformId
+    this.callback = callback
+  }
 }
