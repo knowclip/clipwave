@@ -12,4 +12,6 @@ export { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
 export * from './useWaveform'
 export { getNewWaveformSelectionAt } from './useWaveformMediaTimeUpdate'
 
-export type { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
+export type { PrimaryClipDisplayProps, SecondaryClipDisplayProps } from './ClipDisplayProps'
+
+export { default as css } from './Waveform.module.scss'

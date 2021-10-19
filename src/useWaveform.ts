@@ -158,9 +158,14 @@ export function useWaveform(
   }, [state.durationSeconds, state.regions])
   const addItem = useCallback(
     (item: WaveformItem) => {
+      const newRegions = newRegionsWithItems(state.regions, [item])
       dispatch({
         type: 'SET_REGIONS',
-        regions: newRegionsWithItems(state.regions, [item])
+        regions: newRegions,
+        newSelection: {
+          regionIndex: newRegions.findIndex((r, i) => item.start >= r.start && item.end < getRegionEnd(newRegions, i)),
+          item: item.id
+        }
       })
     },
     [state.regions]

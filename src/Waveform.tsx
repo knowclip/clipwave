@@ -28,7 +28,7 @@ import css from './Waveform.module.scss'
 import { getClipRectProps } from './getClipRectProps'
 import { Clips } from './WaveformClips'
 import { getFinalWaveformDragAction } from './getFinalWaveformDragAction'
-import { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
+import { PrimaryClipDisplayProps, SecondaryClipDisplayProps } from './ClipDisplayProps'
 import { getWaveformMousedownAction } from './getWaveformMousedownAction'
 
 type WaveformEventHandlers = {
@@ -39,6 +39,9 @@ type WaveformEventHandlers = {
   onMouseWheel?: React.WheelEventHandler
 }
 
+export type RenderPrimaryClip = (
+  options: PrimaryClipDisplayProps
+) => ReactNode
 export type RenderSecondaryClip = (
   options: SecondaryClipDisplayProps
 ) => ReactNode
@@ -48,6 +51,7 @@ export default function Waveform({
   images,
   playerRef,
   height = WAVEFORM_HEIGHT,
+  renderPrimaryClip,
   renderSecondaryClip,
   ...waveformEventHandlers
 }: {
@@ -55,6 +59,7 @@ export default function Waveform({
   images: { url: string; startSeconds: number; endSeconds: number }[]
   playerRef: MutableRefObject<HTMLVideoElement | HTMLAudioElement | null>
   height?: number
+  renderPrimaryClip?: RenderPrimaryClip
   renderSecondaryClip?: RenderSecondaryClip
 } & WaveformEventHandlers) {
   const {
@@ -106,6 +111,7 @@ export default function Waveform({
           reduceOnVisibleRegions={waveform.reduceOnVisibleRegions}
           height={height}
           state={waveform.state}
+          renderPrimaryClip={renderPrimaryClip}
           renderSecondaryClip={renderSecondaryClip}
         />
         {pendingAction && (

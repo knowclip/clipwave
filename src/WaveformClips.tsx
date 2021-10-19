@@ -7,7 +7,8 @@ import {
 } from './WaveformState'
 import { GetWaveformItem, WaveformInterface } from './useWaveform'
 import { WaveformClip } from './WaveformClipsPrimaryClip'
-import { SecondaryClipDisplayProps } from './SecondaryClipDisplayProps'
+import { SecondaryClipDisplayProps } from './ClipDisplayProps'
+import { PrimaryClipDisplayProps } from '.'
 
 export type ClipClickDataProps = {
   'data-clip-id': string
@@ -15,6 +16,17 @@ export type ClipClickDataProps = {
   'data-clip-end': number
   'data-region-index': number
   'data-clip-is-highlighted'?: number
+}
+function getClipClickDataProps(id: string, start: number, end: number, regionIndex: number, isHighlighted: boolean): ClipClickDataProps {
+  const props = {
+    'data-clip-id': id,
+    'data-clip-start': start,
+    'data-clip-end': end,
+    'data-region-index': regionIndex
+  }
+
+  if (isHighlighted) props['data-clip-is-highlighted'] = 1
+  return props
 }
 
 type TouchingClipsGroup = {
@@ -38,12 +50,14 @@ function ClipsBase({
   getItem,
   height,
   state: { pixelsPerSecond, selection },
+  renderPrimaryClip,
   renderSecondaryClip,
   reduceOnVisibleRegions
 }: {
   getItem: GetWaveformItem
   height: number
   state: WaveformState
+  renderPrimaryClip?: (specs: PrimaryClipDisplayProps) => ReactNode,
   renderSecondaryClip?: (specs: SecondaryClipDisplayProps) => ReactNode
   reduceOnVisibleRegions: WaveformInterface['reduceOnVisibleRegions']
 }) {
@@ -115,19 +129,23 @@ function ClipsBase({
   return (
     <g>
       {primary.flatMap(({ clips, slots }) =>
-        clips.flatMap(({ clip, regionIndex, region, level }) => {
+        clips.flatMap((displaySpecs) => {
+          const { clip, regionIndex } = displaySpecs
           const isHighlighted = clip.id === selectionId
+          const displayProps = {
+            ...displaySpecs,
+            key: clip.id,
+            isHighlighted,
+            height: height - (slots.length - 1) * 10,
+            pixelsPerSecond,
+            clickDataProps: getClipClickDataProps(clip.id, clip.start, clip.end, regionIndex, isHighlighted),
+          }
           const display = (
-            <WaveformClip
-              clip={clip}
-              region={region}
-              regionIndex={regionIndex}
-              key={clip.id}
-              isHighlighted={isHighlighted}
-              height={height - (slots.length - 1) * 10}
-              pixelsPerSecond={pixelsPerSecond}
-              level={level}
-            />
+            renderPrimaryClip
+              ? renderPrimaryClip(displayProps)
+              : <WaveformClip
+              {...displayProps}
+              />
           )
 
           if (isHighlighted) {
