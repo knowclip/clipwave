@@ -15,6 +15,7 @@ export type PrimaryClipDisplayProps = {
   regionIndex: number
   pixelsPerSecond: number
   isHighlighted: boolean
+  level: number
   height: number
   clickDataProps: ClipClickDataProps
 }

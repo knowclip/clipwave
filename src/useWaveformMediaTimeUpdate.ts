@@ -13,6 +13,8 @@ import { getRegionEnd } from './utils/calculateRegions'
 import { elementWidth } from './utils/elementWidth'
 import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
 
+console.warn('hellooooo', 2)
+
 const HALF_SECOND = 500
 export const overlapsSignificantly = (
   chunk: { start: number; end: number },
@@ -155,6 +157,8 @@ function viewBoxStartMsOnTimeUpdate(
   const durationMs = secondsToMs(durationSeconds)
   const currentRightEdge = viewBoxStartMs + visibleTimeSpan
 
+  console.warn({ seeking })
+
   if (seeking && newSelectionItem) {
     if (newSelectionItem.end + buffer >= currentRightEdge)
       return bound(newSelectionItem.end + buffer - visibleTimeSpan, [
@@ -168,15 +172,12 @@ function viewBoxStartMsOnTimeUpdate(
 
   const leftShiftRequired = newlySetMs < viewBoxStartMs
   if (leftShiftRequired) {
-    return Math.max(0, newlySetMs - buffer)
+    return Math.max(0, newlySetMs)
   }
 
   const rightShiftRequired = newlySetMs >= currentRightEdge
   if (rightShiftRequired) {
-    return bound(
-      (newSelectionItem ? newSelectionItem.end : newlySetMs) + buffer,
-      [0, durationMs - visibleTimeSpan]
-    )
+    return bound(newlySetMs, [0, durationMs - visibleTimeSpan])
   }
 
   return state.viewBoxStartMs
@@ -219,7 +220,11 @@ export const getNewWaveformSelectionAt = (
     }
   }
 
-  console.error('Region not found')
+  if (regions.length === 1) return { regionIndex: 0, item: null }
+
+  console.error(
+    `Region not found at ${newMs} ms within ${regions.length} regions`
+  )
   return {
     regionIndex: 0,
     item: null

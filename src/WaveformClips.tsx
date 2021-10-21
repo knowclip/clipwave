@@ -1,4 +1,4 @@
-import React, { ReactNode, useMemo } from 'react'
+import React, { Fragment, ReactNode, useMemo } from 'react'
 import {
   PrimaryClip,
   SecondaryClip,
@@ -17,7 +17,13 @@ export type ClipClickDataProps = {
   'data-region-index': number
   'data-clip-is-highlighted'?: number
 }
-function getClipClickDataProps(id: string, start: number, end: number, regionIndex: number, isHighlighted: boolean): ClipClickDataProps {
+function getClipClickDataProps(
+  id: string,
+  start: number,
+  end: number,
+  regionIndex: number,
+  isHighlighted: boolean
+): ClipClickDataProps {
   const props = {
     'data-clip-id': id,
     'data-clip-start': start,
@@ -57,7 +63,7 @@ function ClipsBase({
   getItem: GetWaveformItem
   height: number
   state: WaveformState
-  renderPrimaryClip?: (specs: PrimaryClipDisplayProps) => ReactNode,
+  renderPrimaryClip?: (specs: PrimaryClipDisplayProps) => ReactNode
   renderSecondaryClip?: (specs: SecondaryClipDisplayProps) => ReactNode
   reduceOnVisibleRegions: WaveformInterface['reduceOnVisibleRegions']
 }) {
@@ -138,14 +144,20 @@ function ClipsBase({
             isHighlighted,
             height: height - (slots.length - 1) * 10,
             pixelsPerSecond,
-            clickDataProps: getClipClickDataProps(clip.id, clip.start, clip.end, regionIndex, isHighlighted),
+            clickDataProps: getClipClickDataProps(
+              clip.id,
+              clip.start,
+              clip.end,
+              regionIndex,
+              isHighlighted
+            )
           }
-          const display = (
-            renderPrimaryClip
-              ? renderPrimaryClip(displayProps)
-              : <WaveformClip
-              {...displayProps}
-              />
+          const display = renderPrimaryClip ? (
+            <Fragment key={`PrimaryClip__${clip.id}`}>
+              {renderPrimaryClip(displayProps)}
+            </Fragment>
+          ) : (
+            <WaveformClip {...displayProps} />
           )
 
           if (isHighlighted) {

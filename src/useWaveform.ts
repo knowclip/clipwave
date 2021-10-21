@@ -20,6 +20,11 @@ import {
 } from './utils/calculateRegions'
 import { ClipDrag, ClipStretch } from './WaveformEvent'
 import { waveformStateReducer, blankState } from './waveformStateReducer'
+import {
+  getNextWaveformItem,
+  getPreviousWaveformItem,
+  TestWaveformItem
+} from './utils/waveformNavigation'
 
 export type WaveformInterface = ReturnType<typeof useWaveform>
 
@@ -74,7 +79,7 @@ export function useWaveform(
           currentRegion.start,
           state.selection
         )
-        console.log({ newSelection })
+        console.warn({ newSelection })
         dispatch({
           type: 'SET_REGIONS',
           regions,
@@ -141,6 +146,48 @@ export function useWaveform(
     },
     [state.pixelsPerSecond]
   )
+  const selectPreviousItemAndSeek = useCallback(
+    (
+      player: HTMLVideoElement | HTMLAudioElement | null,
+      test?: TestWaveformItem
+    ) => {
+      const previousItem = getPreviousWaveformItem(
+        state.regions,
+        state.selection,
+        getItem,
+        test
+      )
+      if (previousItem?.item)
+        selectItemAndSeekTo(
+          previousItem.regionIndex,
+          previousItem.item.id,
+          player,
+          previousItem.item.start
+        )
+    },
+    [state.regions, state.selection, getItem]
+  )
+  const selectNextItemAndSeek = useCallback(
+    (
+      player: HTMLVideoElement | HTMLAudioElement | null,
+      test?: TestWaveformItem
+    ) => {
+      const nextItem = getNextWaveformItem(
+        state.regions,
+        state.selection,
+        getItem,
+        test
+      )
+      if (nextItem?.item)
+        selectItemAndSeekTo(
+          nextItem.regionIndex,
+          nextItem.item.id,
+          player,
+          nextItem.item.start
+        )
+    },
+    [state.regions, state.selection, getItem]
+  )
   const zoom = useCallback((deltaY: number) => {
     if (svgRef.current)
       dispatch({
@@ -163,7 +210,10 @@ export function useWaveform(
         type: 'SET_REGIONS',
         regions: newRegions,
         newSelection: {
-          regionIndex: newRegions.findIndex((r, i) => item.start >= r.start && item.end < getRegionEnd(newRegions, i)),
+          regionIndex: newRegions.findIndex(
+            (r, i) =>
+              item.start >= r.start && item.end < getRegionEnd(newRegions, i)
+          ),
           item: item.id
         }
       })
@@ -270,6 +320,8 @@ export function useWaveform(
         resetWaveformState,
         selectItem,
         selectItemAndSeekTo,
+        selectPreviousItemAndSeek,
+        selectNextItemAndSeek,
         zoom,
         clear,
         addItem,
@@ -300,13 +352,16 @@ export function useWaveform(
   )
 
   useEffect(() => {
-    const handler = (e: ClipwaveRegionsUpdateEvent) => {
+    const handler = (e: ClipwaveCallbackEvent) => {
       if (e.waveformId === id) e.callback(waveformInterface)
     }
-    window.addEventListener('clipwave-regions-update', handler as EventListener)
+    window.addEventListener(
+      ClipwaveCallbackEvent.label,
+      handler as EventListener
+    )
     return () =>
       window.removeEventListener(
-        'clipwave-regions-update',
+        ClipwaveCallbackEvent.label,
         handler as EventListener
       )
   }, [id, waveformInterface])
@@ -335,15 +390,17 @@ function reduceWhile<T, U>(
   return currentAcc
 }
 
-export class ClipwaveRegionsUpdateEvent extends Event {
+export class ClipwaveCallbackEvent extends Event {
   waveformId: string
   callback: (waveform: WaveformInterface) => void
+
+  static label = 'clipwave-callback' as const
 
   constructor(
     waveformId: string,
     callback: (waveform: WaveformInterface) => void
   ) {
-    super('clipwave-regions-update')
+    super(ClipwaveCallbackEvent.label)
     this.waveformId = waveformId
     this.callback = callback
   }
