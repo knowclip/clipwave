@@ -89,7 +89,8 @@ export function useWaveformMediaTimeUpdate(
 
       const svgWidth = elementWidth(svg)
 
-      setCursorX(msToPixels(newMilliseconds, state.pixelsPerSecond))
+      if (wasSeeking)
+        setCursorX(msToPixels(newMilliseconds, state.pixelsPerSecond))
       dispatch({
         type: 'NAVIGATE_TO_TIME',
         ms: newMilliseconds,

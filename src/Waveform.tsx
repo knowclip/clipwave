@@ -138,7 +138,12 @@ export default function Waveform({
           />
         )
       })}
-      <Cursor x={2000} height={height} strokeWidth={1} />
+      <Cursor
+        // x={msToPixels(waveform.state.cursorMs, pixelsPerSecond)}
+        x={2000}
+        height={height}
+        strokeWidth={1}
+      />
     </svg>
   )
 }
@@ -299,6 +304,8 @@ function useWaveformMouseActions({
     React.MouseEvent<SVGElement>
   > = useCallback(
     (e) => {
+      e.preventDefault()
+
       const msAtMouse = waveformTimeAtMousePosition(
         e,
         e.currentTarget,

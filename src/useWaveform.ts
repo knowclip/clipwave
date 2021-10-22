@@ -4,7 +4,8 @@ import {
   pixelsToMs,
   setCursorX,
   msToSeconds,
-  msToPixels
+  msToPixels,
+  setCursorXAfterZoom
 } from './utils'
 import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
 import { WaveformItem, WaveformRegion } from './WaveformState'
@@ -18,6 +19,7 @@ import {
   getPreviousWaveformItem,
   TestWaveformItem
 } from './utils/waveformNavigation'
+import { bound } from './utils/bound'
 
 export type WaveformInterface = ReturnType<typeof useWaveform>
 
@@ -185,14 +187,22 @@ export function useWaveform(
     },
     [state.regions, state.selection, getItem, selectItemAndSeekTo]
   )
-  const zoom = useCallback((deltaY: number) => {
-    if (svgRef.current)
-      dispatch({
-        type: 'ZOOM',
-        delta: deltaY,
-        svgWidth: elementWidth(svgRef.current)
-      })
-  }, [])
+  const zoom = useCallback(
+    (deltaY: number) => {
+      const newPixelsPerSecond = getPixelsPerSecondAfterZoom(
+        state.pixelsPerSecond,
+        deltaY
+      )
+      setCursorXAfterZoom(state.pixelsPerSecond, newPixelsPerSecond)
+      if (svgRef.current)
+        dispatch({
+          type: 'ZOOM',
+          newPixelsPerSecond,
+          svgWidth: elementWidth(svgRef.current)
+        })
+    },
+    [svgRef, state.pixelsPerSecond]
+  )
   const clear = useCallback(() => {
     dispatch({
       type: 'RESET',
@@ -424,4 +434,11 @@ export class ClipwaveCallbackEvent extends Event {
     this.waveformId = waveformId
     this.callback = callback
   }
+}
+
+function getPixelsPerSecondAfterZoom(
+  pixelsPerSecond: number,
+  mousewheelDeltaY: number
+) {
+  return bound(pixelsPerSecond + mousewheelDeltaY, [10, 200])
 }

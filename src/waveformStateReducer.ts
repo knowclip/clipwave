@@ -54,10 +54,7 @@ export function waveformStateReducer(
       }
     }
     case 'ZOOM': {
-      const newPixelsPerSecond = bound(state.pixelsPerSecond + action.delta, [
-        10,
-        200
-      ])
+      const { newPixelsPerSecond } = action
       const oldVisibleTimeSpan = pixelsToMs(
         action.svgWidth,
         state.pixelsPerSecond
@@ -69,12 +66,18 @@ export function waveformStateReducer(
         cursorScreenOffsetRatio * newVisibleTimeSpan
       )
       const potentialNewViewBoxStartMs = state.cursorMs - newCursorScreenOffset
+      console.log({
+        viewboxStartMs: bound(potentialNewViewBoxStartMs, [
+          0,
+          Math.max(0, secondsToMs(state.durationSeconds) - newVisibleTimeSpan)
+        ])
+      })
       return {
         ...state,
         pixelsPerSecond: newPixelsPerSecond,
         viewBoxStartMs: bound(potentialNewViewBoxStartMs, [
           0,
-          secondsToMs(state.durationSeconds) - newVisibleTimeSpan
+          Math.max(0, secondsToMs(state.durationSeconds) - newVisibleTimeSpan)
         ])
       }
     }
@@ -94,11 +97,6 @@ export function waveformStateReducer(
         action.newSelectionRegion,
         state.selection.regionIndex
       )
-      // if a new region index is given, see if provides a valid selection.
-      //    is the current selection item present at that region? if so, use that.
-      //                                            if not, use first item id at the new region index.
-      //  if no new region index is given, use the current selection.
-      //  in both cases, ensure that the new region index is valid, and that the new selection id is valid.
       const newSelectionItemCandidate =
         action.newSelectionItemId || state.selection.item
       return {

@@ -21,6 +21,23 @@ export const setCursorX = (x: number) => {
   const cursor: SVGLineElement | null = document.querySelector('.cursor')
   if (cursor) {
     const string = String(x)
+    console.log(`Setting x to ${string}`)
+    cursor.setAttribute('x1', string)
+    cursor.setAttribute('x2', string)
+  }
+}
+
+export const setCursorXAfterZoom = (
+  previousPps: number,
+  currentPps: number
+) => {
+  const cursor: SVGLineElement | null = document.querySelector('.cursor')
+  const prevX = Number(cursor?.getAttribute('x1'))
+  if (cursor && typeof prevX === 'number' && !Number.isNaN(prevX)) {
+    const seconds = pixelsToSeconds(prevX, previousPps)
+    const newX = secondsToPixels(seconds, currentPps)
+    const string = String(newX)
+    console.log(`adjusting x to ${string}`)
     cursor.setAttribute('x1', string)
     cursor.setAttribute('x2', string)
   }
@@ -32,6 +49,7 @@ export const syncCursor = (
 ) => (_increment: number) => {
   const cursor: SVGLineElement | null = document.querySelector('.cursor')
   if (cursor) {
+    console.log('syncing cursor')
     const player = playerRef.current
     const string = player ? String(player.currentTime * pixelsPerSecond) : '0'
     cursor.setAttribute('x1', string)
@@ -47,6 +65,7 @@ export const startMovingCursor = (
   pixelsPerSecond: number,
   playerRef: MutableRefObject<HTMLVideoElement | HTMLAudioElement | null>
 ) => {
+  cancelAnimationFrame(animationFrame)
   animationFrame = requestAnimationFrame(syncCursor(pixelsPerSecond, playerRef))
 }
 

@@ -12,7 +12,7 @@ export type WaveformAction =
   | { type: 'CONTINUE_WAVEFORM_MOUSE_ACTION'; ms: number }
   | { type: 'CLEAR_WAVEFORM_MOUSE_ACTION' }
   | { type: 'RESET'; durationSeconds: number; regions: WaveformRegion[] }
-  | { type: 'ZOOM'; delta: number; svgWidth: number }
+  | { type: 'ZOOM'; newPixelsPerSecond: number; svgWidth: number }
   | {
       type: 'SELECT_ITEM'
       regionIndex: number
