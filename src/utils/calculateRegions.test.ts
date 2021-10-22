@@ -128,9 +128,11 @@ describe('recalculateRegions', () => {
     const items = [a, b]
     const end = 10000
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'b', newItem: null }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [{ itemId: 'b', type: 'DELETE' }]
+    )
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -146,9 +148,11 @@ describe('recalculateRegions', () => {
     const items = [a]
     const end = 10000
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'a', newItem: null }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [{ itemId: 'a', type: 'DELETE' }]
+    )
     expect(newRegions).toEqual([endRegion(0, 10000)])
   })
 
@@ -161,9 +165,11 @@ describe('recalculateRegions', () => {
     const end = 10000
 
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'c', newItem: null }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [{ itemId: 'c', type: 'DELETE' }]
+    )
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -180,9 +186,11 @@ describe('recalculateRegions', () => {
     const items = [a, b]
     const end = 10000
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'b', newItem: item('b', 40, 60) }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [{ type: 'UPDATE', newItem: item('b', 40, 60) }]
+    )
 
     expect(newRegions).toEqual([
       region(0),
@@ -213,9 +221,11 @@ describe('recalculateRegions', () => {
       region(45, 'b'),
       endRegion(50, 10000)
     ])
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'c', newItem }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [{ type: 'UPDATE', newItem }]
+    )
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -238,9 +248,11 @@ describe('recalculateRegions', () => {
     const newItem = item('b', 17, 45)
 
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'b', newItem }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [{ type: 'UPDATE', newItem }]
+    )
     expect(newRegions).toEqual([
       region(0),
       region(10, 'a'),
@@ -263,9 +275,11 @@ describe('recalculateRegions', () => {
     const newItem = item('a', 55, 65)
 
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'a', newItem }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [{ type: 'UPDATE', newItem }]
+    )
     expect(newRegions).toEqual([
       region(0),
       region(20, 'b'),
@@ -286,10 +300,14 @@ describe('recalculateRegions', () => {
     const end = 10000
 
     const { regions } = calculateRegions(items, end)
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'a', newItem: item('a', 25, 40) },
-      { id: 'b', newItem: null }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [
+        { type: 'UPDATE', newItem: item('a', 25, 40) },
+        { itemId: 'b', type: 'DELETE' }
+      ]
+    )
     expect(newRegions).toEqual([
       region(0),
       region(25, 'a'),
@@ -317,11 +335,15 @@ describe('recalculateRegions', () => {
       region(45, 'b'),
       endRegion(50, 10000)
     ])
-    const newRegions = recalculateRegions(regions, (id: string) => map[id], [
-      { id: 'c', newItem: item('c', 10, 50) },
-      { id: 'a', newItem: null },
-      { id: 'b', newItem: null }
-    ])
+    const { regions: newRegions } = recalculateRegions(
+      regions,
+      (id: string) => map[id],
+      [
+        { type: 'UPDATE', newItem: item('c', 10, 50) },
+        { itemId: 'a', type: 'DELETE' },
+        { itemId: 'b', type: 'DELETE' }
+      ]
+    )
     expect(newRegions).toEqual([
       region(0),
       region(10, 'c'),
