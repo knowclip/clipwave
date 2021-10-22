@@ -66,12 +66,6 @@ export function waveformStateReducer(
         cursorScreenOffsetRatio * newVisibleTimeSpan
       )
       const potentialNewViewBoxStartMs = state.cursorMs - newCursorScreenOffset
-      console.log({
-        viewboxStartMs: bound(potentialNewViewBoxStartMs, [
-          0,
-          Math.max(0, secondsToMs(state.durationSeconds) - newVisibleTimeSpan)
-        ])
-      })
       return {
         ...state,
         pixelsPerSecond: newPixelsPerSecond,
