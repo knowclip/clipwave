@@ -7,7 +7,7 @@ export function getWaveformMousedownAction(
   event: WaveformMousedownEvent,
   waveform: WaveformInterface
 ): WaveformGesture {
-  const { state, getItem } = waveform
+  const { state } = waveform
   const ms = event.milliseconds
   const timeStamp = event.timeStamp
 
@@ -36,7 +36,7 @@ export function getWaveformMousedownAction(
       type: 'MOVE',
       start: ms,
       end: ms,
-      clip: getItem(dataset.clipId),
+      clipId: dataset.clipId,
       regionIndex: Number(dataset.regionIndex),
       waveformState: state,
       timeStamp,

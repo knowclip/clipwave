@@ -5,9 +5,8 @@ export type WaveformState = {
   pixelsPerSecond: number
   selection: {
     regionIndex: number
-    region: WaveformRegion
-    item: WaveformItem
-  } | null
+    item: WaveformItem['id'] | null
+  }
   pendingAction: import('./WaveformEvent').WaveformGesture | null
   regions: WaveformRegion[]
 }

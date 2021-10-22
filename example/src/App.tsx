@@ -4,7 +4,7 @@ import { useWaveform, Waveform } from 'clipwave'
 import 'clipwave/dist/index.css'
 
 const App = () => {
-  const waveform = useWaveform({} as any, {})
+  const waveform = useWaveform({} as any, 'waveform')
   return <Waveform waveform={waveform} images={[]} playerRef={useRef(null)} />
 }
 

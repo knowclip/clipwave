@@ -1,5 +1,6 @@
 import { GetWaveformItem } from '../useWaveform'
 import { WaveformItem, WaveformRegion } from '../WaveformState'
+import { getRegionEnd, overlap, WaveformItemUpdate } from './getRegionEnd'
 
 export const calculateRegions = (
   /** sorted by start. then end? */
@@ -73,50 +74,66 @@ export function newRegionsWithItems(
   return newRegions
 }
 
-export function getRegionEnd(regions: WaveformRegion[], index: number): number {
-  const end = regions[regions.length - 1].end
-  if (typeof end !== 'number') throw new Error('No regions end found')
-  const nextRegion: WaveformRegion | null = regions[index + 1] || null
-  if (!nextRegion) return end
-  const nextRegionStart = nextRegion.start
-  return nextRegionStart
-}
-
-export function overlap(a: Coords, b: Coords) {
-  return a.start <= b.end && a.end >= b.start
-}
-
-type WaveformItemUpdate = {
-  id: WaveformItem['id']
-  newItem: WaveformItem | null
+function getItemId(update: WaveformItemUpdate) {
+  switch (update.type) {
+    case 'CREATE':
+      return update.newItem.id
+    case 'DELETE':
+      return update.itemId
+    case 'UPDATE':
+      return update.newItem.id
+  }
 }
 
 export function recalculateRegions(
   regions: WaveformRegion[],
   getItem: GetWaveformItem,
-  adjacentUpdates: WaveformItemUpdate[]
-) {
+  adjacentUpdates: WaveformItemUpdate[],
+  // currentSelection?: WaveformState['selection'],
+  newSelectionMs?: number
+): { regions: WaveformRegion[]; newSelectionRegion?: number } {
   const idsToIndexes = adjacentUpdates.reduce((map, update, i) => {
-    map[update.id] = i
+    map[getItemId(update)] = i
     return map
   }, {} as Record<WaveformItem['id'], number>)
   const getUpdate = (id: WaveformItem['id']): WaveformItemUpdate | undefined =>
     adjacentUpdates[idsToIndexes[id]]
+  const validAdjacentUpdates = adjacentUpdates.filter((update) => {
+    switch (update.type) {
+      case 'CREATE':
+      case 'DELETE':
+        return true
+      case 'UPDATE':
+        return getItem(update.newItem.id)
+    }
+  })
+  if (!validAdjacentUpdates.length) return { regions }
+
   const updatesRange = {
     start: Math.min(
-      ...adjacentUpdates.flatMap(({ id, newItem: newItem }) => {
-        const old = getItem(id)
-
-        if (newItem) return [old.start, newItem.start]
-        return [old.start]
+      ...validAdjacentUpdates.flatMap((update) => {
+        switch (update.type) {
+          case 'CREATE':
+            return update.newItem.start
+          case 'DELETE':
+            // TODO: investigate speeding this up by requiring deleted item coords
+            return 0
+          case 'UPDATE':
+            return [getItem(update.newItem.id)!.start, update.newItem.start]
+        }
       })
     ),
     end: Math.max(
-      ...adjacentUpdates.flatMap(({ id, newItem: newItem }) => {
-        const old = getItem(id)
-
-        if (newItem) return [old.end, newItem.end]
-        return [old.end]
+      ...validAdjacentUpdates.flatMap((update) => {
+        switch (update.type) {
+          case 'CREATE':
+            return update.newItem.end
+          case 'DELETE':
+            // TODO: investigate speeding this up by requiring deleted item coords
+            return getRegionEnd(regions, regions.length - 1)
+          case 'UPDATE':
+            return [getItem(update.newItem.id)!.end, update.newItem.end]
+        }
       })
     )
   }
@@ -138,16 +155,22 @@ export function recalculateRegions(
     regions.length,
     isAffected
   )
-  const recalculationStart = affectedRegionsStart
+  const recalculationStartRegionIndex = affectedRegionsStart
   const recalculationEnd = affectedRegionsEnd
 
-  const itemsToBeIncluded: WaveformItem[] = []
-  for (let i = recalculationStart; i <= recalculationEnd; i++) {
+  const itemsToBeIncluded: WaveformItem[] = adjacentUpdates.flatMap((update) =>
+    update.type === 'CREATE' ? update.newItem : []
+  )
+  for (let i = recalculationStartRegionIndex; i <= recalculationEnd; i++) {
     const region = regions[i]
     for (const id of region.itemIds) {
       const update = getUpdate(id)
-      const item = update ? update.newItem : getItem(id)
-      if (item && !itemsToBeIncluded.includes(item))
+
+      const item =
+        update && update.type === 'DELETE'
+          ? null
+          : update?.newItem ?? getItem(id)
+      if (item && !itemsToBeIncluded.some((i) => i.id === item.id))
         itemsToBeIncluded.push(item)
     }
   }
@@ -158,13 +181,13 @@ export function recalculateRegions(
 
   const { regions: changedRegions } = calculateRegions(itemsToBeIncluded, end, [
     {
-      start: regions[recalculationStart].start,
+      start: regions[recalculationStartRegionIndex].start,
       itemIds: [],
       end
     }
   ])
 
-  const pre = regions.slice(0, recalculationStart)
+  const pre = regions.slice(0, recalculationStartRegionIndex)
   const post = regions.slice(recalculationEnd)
 
   if (
@@ -194,7 +217,22 @@ export function recalculateRegions(
     delete changedRegions[changedRegions.length - 1].end
   }
 
-  return [...pre, ...changedRegions, ...post]
+  const newRegions = [...pre, ...changedRegions, ...post]
+  let newSelectionRegion: number | undefined
+  if (
+    typeof newSelectionMs === 'number' &&
+    newSelectionMs >= regions[recalculationStartRegionIndex].start &&
+    newSelectionMs < end
+  )
+    newSelectionRegion = newRegions.findIndex(
+      (r, i) =>
+        newSelectionMs >= r.start &&
+        newSelectionMs < getRegionEnd(newRegions, i)
+    )
+  return {
+    regions: newRegions,
+    newSelectionRegion
+  }
 }
 
 function setsAreEqual<T>(as: Set<T>, bs: Set<T>) {
@@ -230,7 +268,7 @@ function searchFromEnd<T>(
   return -1
 }
 
-type Coords = { start: number; end: number }
+export type Coords = { start: number; end: number }
 
 /** mutates array */
 export function sortWaveformItems<T extends Coords>(items: T[]): T[] {

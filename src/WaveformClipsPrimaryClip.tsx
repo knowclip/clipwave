@@ -12,8 +12,8 @@ function WaveformClipBase({
   isHighlighted,
   height,
   pixelsPerSecond,
-  regionIndex,
-  level
+  level,
+  clickDataProps
 }: {
   clip: PrimaryClip
   region: WaveformRegion
@@ -22,24 +22,16 @@ function WaveformClipBase({
   regionIndex: number
   pixelsPerSecond: number
   level: number
+  clickDataProps: ClipClickDataProps
 }) {
   const { id, start, end } = clip
-  const clickDataProps: ClipClickDataProps = {
-    'data-clip-id': id,
-    'data-clip-start': start,
-    'data-clip-end': end,
-    'data-region-index': regionIndex
-  }
-  if (isHighlighted) clickDataProps['data-clip-is-highlighted'] = 1
   const y = level * 10
   return (
     <g id={id} {...clickDataProps}>
       <rect
-        className={cn(
-          css.waveformClip,
-          { [css.highlightedClip]: isHighlighted }
-          // $.waveformClip
-        )}
+        className={cn(css.waveformClip, {
+          [css.highlightedClip]: isHighlighted
+        })}
         {...getClipRectProps(
           msToPixels(start, pixelsPerSecond),
           msToPixels(end, pixelsPerSecond),

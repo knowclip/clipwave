@@ -9,9 +9,9 @@ import {
   pixelsToMs
 } from './utils'
 import { bound } from './utils/bound'
-import { getRegionEnd } from './utils/calculateRegions'
 import { elementWidth } from './utils/elementWidth'
 import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
+import { getNewWaveformSelectionAt } from './utils/getNewWaveformSelectionAt'
 
 const HALF_SECOND = 500
 export const overlapsSignificantly = (
@@ -43,6 +43,9 @@ export function useWaveformMediaTimeUpdate(
 
       const newMilliseconds = secondsToMs(media.currentTime)
       const currentSelection = state.selection
+      const currentSelectedItem = state.selection.item
+        ? getItem(state.selection.item)
+        : null
 
       if (selectionDoesntNeedSetAtNextTimeUpdate.current) {
         selectionDoesntNeedSetAtNextTimeUpdate.current = false
@@ -55,13 +58,13 @@ export function useWaveformMediaTimeUpdate(
         !wasSeeking &&
         looping &&
         !media.paused &&
-        currentSelection?.item &&
-        newMilliseconds >= currentSelection.item.end
-      if (loopImminent && currentSelection) {
-        media.currentTime = msToSeconds(currentSelection.item.start)
+        currentSelectedItem &&
+        newMilliseconds >= currentSelectedItem.end
+      if (loopImminent && currentSelectedItem) {
+        media.currentTime = msToSeconds(currentSelectedItem.start)
         return dispatch({
           type: 'NAVIGATE_TO_TIME',
-          ms: currentSelection.item.start,
+          ms: currentSelectedItem.start,
           viewBoxStartMs: state.viewBoxStartMs,
           selection: currentSelection
         })
@@ -75,25 +78,31 @@ export function useWaveformMediaTimeUpdate(
       )
 
       const newSelection = isValidNewSelection(
-        currentSelection ? currentSelection.item : null,
-        newSelectionCandidate ? newSelectionCandidate.item : null
+        currentSelectedItem,
+        newSelectionCandidate.item ? getItem(newSelectionCandidate.item) : null
       )
         ? newSelectionCandidate
+        : null
+      const newSelectionItem = newSelection?.item
+        ? getItem(newSelection.item)
         : null
 
       const svgWidth = elementWidth(svg)
 
-      setCursorX(msToPixels(newMilliseconds, state.pixelsPerSecond))
+      if (wasSeeking)
+        setCursorX(msToPixels(newMilliseconds, state.pixelsPerSecond))
       dispatch({
         type: 'NAVIGATE_TO_TIME',
         ms: newMilliseconds,
         selection:
-          !wasSeeking && !newSelection ? currentSelection : newSelection,
+          !wasSeeking && !newSelectionItem
+            ? currentSelection
+            : newSelection || currentSelection,
         viewBoxStartMs: viewBoxStartMsOnTimeUpdate(
           state,
           newMilliseconds,
           svgWidth,
-          newSelection,
+          newSelectionItem,
           wasSeeking
         )
       })
@@ -136,10 +145,9 @@ function viewBoxStartMsOnTimeUpdate(
   state: WaveformState,
   newlySetMs: number,
   svgWidth: number,
-  newSelection: ReturnType<typeof getNewWaveformSelectionAt>,
+  newSelectionItem: WaveformItem | null,
   seeking: boolean
 ): number {
-  const newSelectionItem = newSelection?.item || null
   if (state.pendingAction) return state.viewBoxStartMs
   const visibleTimeSpan = pixelsToMs(svgWidth, state.pixelsPerSecond)
   const buffer = Math.round(visibleTimeSpan * 0.1)
@@ -161,70 +169,13 @@ function viewBoxStartMsOnTimeUpdate(
 
   const leftShiftRequired = newlySetMs < viewBoxStartMs
   if (leftShiftRequired) {
-    return Math.max(0, newlySetMs - buffer)
+    return Math.max(0, newlySetMs)
   }
 
   const rightShiftRequired = newlySetMs >= currentRightEdge
   if (rightShiftRequired) {
-    return bound(
-      (newSelectionItem ? newSelectionItem.end : newlySetMs) + buffer,
-      [0, durationMs - visibleTimeSpan]
-    )
+    return bound(newlySetMs, [0, durationMs - visibleTimeSpan])
   }
 
   return state.viewBoxStartMs
-}
-
-function itemsAreEqual(a: WaveformItem, b: WaveformItem) {
-  return a.id === b.id && a.start === b.start && a.end === b.end
-}
-
-export const getNewWaveformSelectionAt = (
-  getNewWaveformItem: GetWaveformItem,
-  regions: WaveformRegion[],
-  newMs: number,
-  currentSelection: WaveformState['selection']
-): WaveformState['selection'] => {
-  // TODO: optimize for non-seeking (normal playback) case
-  const unchangedCurrentItem =
-    currentSelection &&
-    itemsAreEqual(
-      currentSelection.item,
-      getNewWaveformItem(currentSelection.item.id)
-    )
-      ? currentSelection.item
-      : null
-  const stillWithinSameItem =
-    unchangedCurrentItem &&
-    newMs >= unchangedCurrentItem.start &&
-    newMs < unchangedCurrentItem.end
-
-  for (let i = 0; i < regions.length; i++) {
-    const region = regions[i]
-
-    if (region.start > newMs) break
-
-    if (newMs >= region.start && newMs < getRegionEnd(regions, i)) {
-      const overlappedItemId =
-        unchangedCurrentItem && stillWithinSameItem
-          ? unchangedCurrentItem.id
-          : region.itemIds.find(
-              (id) =>
-                newMs >= getNewWaveformItem(id).start &&
-                newMs < getNewWaveformItem(id).end
-            )
-      const overlappedItem = overlappedItemId
-        ? getNewWaveformItem(overlappedItemId)
-        : null
-      return overlappedItem
-        ? {
-            region,
-            item: overlappedItem,
-            regionIndex: i
-          }
-        : null
-    }
-  }
-
-  return null
 }

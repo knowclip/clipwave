@@ -12,7 +12,7 @@ export function usePlayButtonSync(
   const playMedia = useCallback(() => {
     startMovingCursor(pixelsPerSecond, playerRef)
     setPlaying(true)
-  }, [pixelsPerSecond])
+  }, [pixelsPerSecond, playerRef])
   const pauseMedia = useCallback(() => {
     stopMovingCursor()
     setPlaying(false)
@@ -20,12 +20,14 @@ export function usePlayButtonSync(
 
   const previousPixelsPerSecond = usePrevious(pixelsPerSecond)
   useEffect(() => {
-    if (!playing) return
+    if (!playing) {
+      return
+    }
     if (pixelsPerSecond !== previousPixelsPerSecond) {
       stopMovingCursor()
       startMovingCursor(pixelsPerSecond, playerRef)
     }
-  }, [playing, previousPixelsPerSecond, pixelsPerSecond])
+  }, [playing, previousPixelsPerSecond, pixelsPerSecond, playerRef])
 
   useEffect(() => {
     const startPlaying = () => {
@@ -48,7 +50,7 @@ export function usePlayButtonSync(
     const player = playerRef.current
     if (!player) return
     player.paused ? player.play() : player.pause()
-  }, [])
+  }, [playerRef])
 
   useEffect(() => {
     const resetPlayButton = () => {

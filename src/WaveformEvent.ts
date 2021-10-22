@@ -21,17 +21,17 @@ export class WaveformMousedownEvent extends Event {
 
 export class WaveformDragEvent extends Event {
   mouseDown: WaveformMousedownEvent
-  action: WaveformGesture
+  gesture: WaveformGesture
 
-  constructor(mouseDown: WaveformMousedownEvent, action: WaveformGesture) {
+  constructor(mouseDown: WaveformMousedownEvent, gesture: WaveformGesture) {
     super('waveformDrag')
     this.mouseDown = mouseDown
-    this.action = action
+    this.gesture = gesture
   }
 }
 
 export type WaveformGestureOf<T extends WaveformGesture> = WaveformDragEvent & {
-  action: T
+  gesture: T
 }
 
 export type WaveformGesture = WaveformDrag | ClipDrag | ClipStretch
@@ -48,7 +48,7 @@ export type ClipDrag = {
   type: 'MOVE'
   start: number
   end: number
-  clip: WaveformItem
+  clipId: WaveformItem['id']
   regionIndex: number
   waveformState: WaveformState
   timeStamp: number
