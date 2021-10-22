@@ -28,7 +28,10 @@ import css from './Waveform.module.scss'
 import { getClipRectProps } from './getClipRectProps'
 import { Clips } from './WaveformClips'
 import { getFinalWaveformDragAction } from './getFinalWaveformDragAction'
-import { PrimaryClipDisplayProps, SecondaryClipDisplayProps } from './ClipDisplayProps'
+import {
+  PrimaryClipDisplayProps,
+  SecondaryClipDisplayProps
+} from './ClipDisplayProps'
 import { getWaveformMousedownAction } from './getWaveformMousedownAction'
 
 type WaveformEventHandlers = {
@@ -39,9 +42,7 @@ type WaveformEventHandlers = {
   onMouseWheel?: React.WheelEventHandler
 }
 
-export type RenderPrimaryClip = (
-  options: PrimaryClipDisplayProps
-) => ReactNode
+export type RenderPrimaryClip = (options: PrimaryClipDisplayProps) => ReactNode
 export type RenderSecondaryClip = (
   options: SecondaryClipDisplayProps
 ) => ReactNode

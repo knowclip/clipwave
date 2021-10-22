@@ -9,11 +9,9 @@ import {
   pixelsToMs
 } from './utils'
 import { bound } from './utils/bound'
-import { getRegionEnd } from './utils/calculateRegions'
 import { elementWidth } from './utils/elementWidth'
 import { WaveformItem, WaveformRegion, WaveformState } from './WaveformState'
-
-console.warn('hellooooo', 2)
+import { getNewWaveformSelectionAt } from './utils/getNewWaveformSelectionAt'
 
 const HALF_SECOND = 500
 export const overlapsSignificantly = (
@@ -157,8 +155,6 @@ function viewBoxStartMsOnTimeUpdate(
   const durationMs = secondsToMs(durationSeconds)
   const currentRightEdge = viewBoxStartMs + visibleTimeSpan
 
-  console.warn({ seeking })
-
   if (seeking && newSelectionItem) {
     if (newSelectionItem.end + buffer >= currentRightEdge)
       return bound(newSelectionItem.end + buffer - visibleTimeSpan, [
@@ -181,52 +177,4 @@ function viewBoxStartMsOnTimeUpdate(
   }
 
   return state.viewBoxStartMs
-}
-
-export const getNewWaveformSelectionAt = (
-  getNewWaveformItem: GetWaveformItem,
-  regions: WaveformRegion[],
-  newMs: number,
-  currentSelection: WaveformState['selection']
-): WaveformState['selection'] => {
-  // TODO: optimize for non-seeking (normal playback) case
-  const newCurrentItem = currentSelection.item
-    ? getNewWaveformItem(currentSelection.item)
-    : null
-
-  const stillWithinSameItem =
-    newCurrentItem &&
-    newMs >= newCurrentItem.start &&
-    newMs < newCurrentItem.end
-
-  for (let i = 0; i < regions.length; i++) {
-    const region = regions[i]
-
-    if (region.start > newMs) break
-
-    if (newMs >= region.start && newMs < getRegionEnd(regions, i)) {
-      const overlappedItemId =
-        stillWithinSameItem && newCurrentItem
-          ? newCurrentItem.id
-          : region.itemIds.find((id) => {
-              const item = getNewWaveformItem(id)
-              return item && newMs >= item.start && newMs < item.end
-            })
-
-      return {
-        item: overlappedItemId || null,
-        regionIndex: i
-      }
-    }
-  }
-
-  if (regions.length === 1) return { regionIndex: 0, item: null }
-
-  console.error(
-    `Region not found at ${newMs} ms within ${regions.length} regions`
-  )
-  return {
-    regionIndex: 0,
-    item: null
-  }
 }

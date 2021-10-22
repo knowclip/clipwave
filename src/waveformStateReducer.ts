@@ -2,6 +2,7 @@ import { pixelsToMs, secondsToMs } from './utils'
 import { WaveformState } from './WaveformState'
 import { bound } from './utils/bound'
 import { WaveformAction } from './WaveformAction'
+import { WaveformRegion } from '.'
 
 export const blankState: WaveformState = {
   cursorMs: 0,
@@ -88,14 +89,55 @@ export function waveformStateReducer(
       }
 
     case 'SET_REGIONS': {
+      const newRegionIndex = getValidNewRegionIndex(
+        action.regions,
+        action.newSelectionRegion,
+        state.selection.regionIndex
+      )
+      // if a new region index is given, see if provides a valid selection.
+      //    is the current selection item present at that region? if so, use that.
+      //                                            if not, use first item id at the new region index.
+      //  if no new region index is given, use the current selection.
+      //  in both cases, ensure that the new region index is valid, and that the new selection id is valid.
+      const newSelectionItemCandidate =
+        action.newSelectionItemId || state.selection.item
       return {
         ...state,
         regions: action.regions,
-        selection: action.newSelection || state.selection
+        selection: {
+          regionIndex: newRegionIndex,
+          item:
+            newSelectionItemCandidate &&
+            getValidNewItemId(
+              action.regions,
+              newRegionIndex,
+              newSelectionItemCandidate
+            )
+        }
       }
     }
 
     default:
       return state
   }
+}
+
+function getValidNewRegionIndex(
+  regions: WaveformRegion[],
+  newRegionIndex: number | undefined,
+  currentRegionIndex: number
+) {
+  if (typeof newRegionIndex == 'number' && regions[newRegionIndex])
+    return newRegionIndex
+  if (typeof currentRegionIndex == 'number' && regions[currentRegionIndex])
+    return currentRegionIndex
+  return 0 // TODO: make sure 0 regions won't happen
+}
+function getValidNewItemId(
+  regions: WaveformRegion[],
+  validNewRegionIndex: number,
+  itemIdCandidate: string
+) {
+  const region = regions[validNewRegionIndex]
+  return region.itemIds.includes(itemIdCandidate) ? itemIdCandidate : null
 }

@@ -6,18 +6,11 @@ import {
   msToSeconds,
   msToPixels
 } from './utils'
-import {
-  useWaveformMediaTimeUpdate,
-  getNewWaveformSelectionAt
-} from './useWaveformMediaTimeUpdate'
+import { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
 import { WaveformItem, WaveformRegion } from './WaveformState'
 import { elementWidth } from './utils/elementWidth'
-import {
-  calculateRegions,
-  getRegionEnd,
-  newRegionsWithItems,
-  recalculateRegions
-} from './utils/calculateRegions'
+import { calculateRegions, recalculateRegions } from './utils/calculateRegions'
+import { getRegionEnd } from './utils/getRegionEnd'
 import { ClipDrag, ClipStretch } from './WaveformEvent'
 import { waveformStateReducer, blankState } from './waveformStateReducer'
 import {
@@ -64,27 +57,32 @@ export function useWaveform(
       missingItems.current = new Set()
       console.log(
         'clipwave deleting missing items: ',
-        [...currentMissingIds].join(',  ')
+        Array.from(currentMissingIds).join(',  ')
       )
-      const regions = recalculateRegions(
+      const { regions, newSelectionRegion } = recalculateRegions(
         state.regions,
         getItemDangerously,
-        Array.from(currentMissingIds).map((id) => ({ id, newItem: null }))
+        Array.from(currentMissingIds).map((id) => ({
+          type: 'DELETE',
+          itemId: id
+        }))
       )
-      if (regions !== state.regions) {
-        const currentRegion = state.regions[state.selection.regionIndex]
-        const newSelection = getNewWaveformSelectionAt(
-          getItemDangerously,
-          regions,
-          currentRegion.start,
-          state.selection
-        )
-        console.warn({ newSelection })
+      const newSelection = {
+        regionIndex: newSelectionRegion ?? state.selection.regionIndex,
+        item: currentMissingIds.has(state.selection.item || '')
+          ? null
+          : state.selection.item
+      }
+      const selectionHasChanged =
+        newSelection?.item !== state.selection?.item ||
+        newSelection?.regionIndex !== state.selection.regionIndex
+
+      if (regions !== state.regions || selectionHasChanged) {
         dispatch({
           type: 'SET_REGIONS',
           regions,
-          // TODO: calculate this in recalculateRegions to avoid extra loop
-          newSelection
+          newSelectionRegion
+          // newSelection: selectionHasChanged ? newSelection : undefined
         })
       }
     }
@@ -92,8 +90,7 @@ export function useWaveform(
     getItemDangerously,
     missingItems.current.size,
     state.regions,
-    state.selection,
-    state.selection.item
+    state.selection
   ])
 
   const { regions } = state
@@ -165,7 +162,7 @@ export function useWaveform(
           previousItem.item.start
         )
     },
-    [state.regions, state.selection, getItem]
+    [state.regions, state.selection, getItem, selectItemAndSeekTo]
   )
   const selectNextItemAndSeek = useCallback(
     (
@@ -186,7 +183,7 @@ export function useWaveform(
           nextItem.item.start
         )
     },
-    [state.regions, state.selection, getItem]
+    [state.regions, state.selection, getItem, selectItemAndSeekTo]
   )
   const zoom = useCallback((deltaY: number) => {
     if (svgRef.current)
@@ -205,37 +202,50 @@ export function useWaveform(
   }, [state.durationSeconds, state.regions])
   const addItem = useCallback(
     (item: WaveformItem) => {
-      const newRegions = newRegionsWithItems(state.regions, [item])
+      const { regions, newSelectionRegion } = recalculateRegions(
+        state.regions,
+        (id) => (id === item.id ? item : getItemDangerously(id)),
+        [{ type: 'CREATE', newItem: item }],
+        item.start
+      )
+
       dispatch({
         type: 'SET_REGIONS',
-        regions: newRegions,
-        newSelection: {
-          regionIndex: newRegions.findIndex(
-            (r, i) =>
-              item.start >= r.start && item.end < getRegionEnd(newRegions, i)
-          ),
-          item: item.id
-        }
+        regions,
+        newSelectionRegion,
+        newSelectionItemId: item.id
       })
     },
-    [state.regions]
+    [getItemDangerously, state.regions]
   )
   const addItems = useCallback(
-    (items: WaveformItem[]) => {
-      dispatch({
-        type: 'SET_REGIONS',
-        regions: newRegionsWithItems(state.regions, items)
-      })
+    (items: WaveformItem[], newSelectionMs?: number) => {
+      const itemsToAdd: Record<string, WaveformItem> = {}
+      const { regions, newSelectionRegion } = recalculateRegions(
+        state.regions,
+        (id) => getItemDangerously(id) || itemsToAdd[id],
+        items.map((item) => {
+          itemsToAdd[item.id] = item
+          return { type: 'CREATE', newItem: item }
+        }),
+        newSelectionMs
+      )
+      dispatch({ type: 'SET_REGIONS', regions, newSelectionRegion })
     },
-    [state.regions]
+    [getItemDangerously, state.regions]
   )
   const deleteItem = useCallback(
-    (id: string) => {
+    (id: string, newMs?: number) => {
+      const { regions, newSelectionRegion } = recalculateRegions(
+        state.regions,
+        getItemDangerously,
+        [{ itemId: id, type: 'DELETE' }],
+        newMs
+      )
       dispatch({
         type: 'SET_REGIONS',
-        regions: recalculateRegions(state.regions, getItemDangerously, [
-          { id, newItem: null }
-        ])
+        regions,
+        newSelectionRegion
       })
     },
     [getItemDangerously, state.regions]
@@ -250,11 +260,15 @@ export function useWaveform(
         start: target.start + delta,
         end: target.end + delta
       }
+      const { regions, newSelectionRegion } = recalculateRegions(
+        state.regions,
+        getItemDangerously,
+        [{ type: 'UPDATE', newItem: movedItem }]
+      )
       dispatch({
         type: 'SET_REGIONS',
-        regions: recalculateRegions(state.regions, getItemDangerously, [
-          { id: target.id, newItem: movedItem }
-        ])
+        regions,
+        newSelectionRegion
       })
     },
     [getItemDangerously, state.regions]
@@ -263,11 +277,15 @@ export function useWaveform(
     (stretch: ClipStretch) => {
       const { originKey, end, clipId } = stretch
       const target = getItemDangerously(clipId)
+      const { regions, newSelectionRegion } = recalculateRegions(
+        state.regions,
+        getItemDangerously,
+        [{ type: 'UPDATE', newItem: { ...target, [originKey]: end } }]
+      )
       dispatch({
         type: 'SET_REGIONS',
-        regions: recalculateRegions(state.regions, getItemDangerously, [
-          { id: clipId, newItem: { ...target, [originKey]: end } }
-        ])
+        regions,
+        newSelectionRegion
       })
     },
     [getItemDangerously, state.regions]
@@ -345,6 +363,8 @@ export function useWaveform(
       resetWaveformState,
       selectItem,
       selectItemAndSeekTo,
+      selectNextItemAndSeek,
+      selectPreviousItemAndSeek,
       state,
       stretchItem,
       zoom

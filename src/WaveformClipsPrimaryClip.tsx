@@ -29,10 +29,9 @@ function WaveformClipBase({
   return (
     <g id={id} {...clickDataProps}>
       <rect
-        className={cn(
-          css.waveformClip,
-          { [css.highlightedClip]: isHighlighted }
-        )}
+        className={cn(css.waveformClip, {
+          [css.highlightedClip]: isHighlighted
+        })}
         {...getClipRectProps(
           msToPixels(start, pixelsPerSecond),
           msToPixels(end, pixelsPerSecond),

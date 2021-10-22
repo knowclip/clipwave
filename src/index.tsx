@@ -7,11 +7,12 @@ export * from './WaveformEvent'
 export * from './utils'
 export * from './utils/calculateRegions'
 export * from './utils/waveformNavigation'
+export { getNewWaveformSelectionAt } from './utils/getNewWaveformSelectionAt'
+export { getRegionEnd } from './utils/getRegionEnd'
 
 export { usePlayButtonSync } from './usePlayButtonSync'
 export { useWaveformMediaTimeUpdate } from './useWaveformMediaTimeUpdate'
 export * from './useWaveform'
-export { getNewWaveformSelectionAt } from './useWaveformMediaTimeUpdate'
 
 export type {
   PrimaryClipDisplayProps,

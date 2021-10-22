@@ -21,7 +21,8 @@ export type WaveformAction =
   | {
       type: 'SET_REGIONS'
       regions: WaveformRegion[]
-      newSelection?: WaveformState['selection']
+      newSelectionRegion?: number
+      newSelectionItemId?: WaveformItem['id']
     }
 
 // create

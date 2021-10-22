@@ -2,7 +2,7 @@ import { CLIP_THRESHOLD_MILLSECONDS, secondsToMs } from './utils'
 import { WaveformInterface } from './useWaveform'
 import { WaveformGesture } from './WaveformEvent'
 import { bound } from './utils/bound'
-import { getRegionEnd, overlap } from './utils/calculateRegions'
+import { getRegionEnd, overlap } from './utils/getRegionEnd'
 
 export function getFinalWaveformDragAction(
   pendingAction: WaveformGesture,
