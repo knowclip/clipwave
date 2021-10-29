@@ -115,6 +115,34 @@ describe('newRegionsWithItem', () => {
       endRegion(50, 10000)
     ])
   })
+
+  it('works with items ending or starting at the same time', () => {
+    const end = 10000
+    const items = [
+      item('a', 10, 20),
+      item('b', 40, 50),
+      item('c', 15, 50),
+      item('d', 60, 70),
+      item('e', 60, 65),
+      item('f', 80, 90),
+      item('g', 80, 90)
+    ]
+    const { regions: newRegions } = calculateRegions(items, end)
+
+    expect(newRegions).toEqual([
+      region(0),
+      region(10, 'a'),
+      region(15, 'a', 'c'),
+      region(20, 'c'),
+      region(40, 'b', 'c'),
+      region(50),
+      region(60, 'd', 'e'),
+      region(65, 'd'),
+      region(70),
+      region(80, 'f', 'g'),
+      endRegion(90, 10000)
+    ])
+  })
 })
 
 describe('recalculateRegions', () => {

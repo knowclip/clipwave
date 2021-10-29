@@ -36,7 +36,7 @@ export function newRegionsWithItems(
     const regionEnd = getRegionEnd(regions, i)
     /// OFF BY ONE?
     const regionIsAffected =
-      region.start <= updatesRange.end && regionEnd > updatesRange.start
+      region.start < updatesRange.end && regionEnd > updatesRange.start
 
     if (regionIsAffected) {
       const splitRegions: WaveformRegion[] = []
