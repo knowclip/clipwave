@@ -1,6 +1,6 @@
 {
   "name": "clipwave",
-  "version": "0.1.9",
+  "version": "0.1.10",
   "description": "A React component for an interactive audio waveform",
   "author": "justinsilvestre",
   "license": "AGPL-3.0",
@@ -26,7 +26,7 @@
     "yalc": "yalc"
   },
   "peerDependencies": {
-    "react": "^17.0.0"
+    "react": ">=17.0.0"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.13.14",
@@ -64,6 +64,6 @@
     "dist"
   ],
   "dependencies": {
-    "classnames": "^2.3.1"
+    "classnames": "^2.3.2"
   }
 }
