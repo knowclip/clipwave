@@ -25,7 +25,8 @@ export function getWaveformMousedownAction(
       start: ms,
       end: ms,
       originKey: Math.abs(ms - start) < Math.abs(ms - end) ? 'start' : 'end',
-      regionIndex: Number(dataset.regionIndex),
+      originRegionIndex: Number(dataset.regionIndex),
+      finishRegionIndex: -1, // PLACEHOLDER
       clipId: dataset.clipId,
       waveformState: state,
       timeStamp,
