@@ -26,7 +26,7 @@
     "yalc": "yalc"
   },
   "peerDependencies": {
-    "react": ">=17.0.0"
+    "react": ">=18.0.0"
   },
   "devDependencies": {
     "@babel/eslint-parser": "^7.13.14",
@@ -35,8 +35,8 @@
     "@testing-library/user-event": "^13.1.2",
     "@types/jest": "^25.1.4",
     "@types/node": "^14.14.37",
-    "@types/react": "^17.0.3",
-    "@types/react-dom": "^17.0.3",
+    "@types/react": "^18.0.0",
+    "@types/react-dom": "^18.0.0",
     "@typescript-eslint/eslint-plugin": "^4.20.0",
     "@typescript-eslint/parser": "^4.20.0",
     "cross-env": "^7.0.2",
@@ -54,8 +54,8 @@
     "node-sass": "^5.0.0",
     "npm-run-all": "^4.1.5",
     "prettier": "^2.2.1",
-    "react": "^17.0.2",
-    "react-dom": "^17.0.2",
+    "react": "^18.0.2",
+    "react-dom": "^18.0.2",
     "react-scripts": "^4.0.3",
     "sass": "^1.43.4",
     "typescript": "^3.9.9"
