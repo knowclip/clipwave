@@ -86,10 +86,14 @@ export function getFinalWaveformDragAction(
             ]
 
       const stretchEnd = bound(pendingAction.end, bounds)
+
       return {
         ...pendingAction,
         waveformState,
         end: stretchEnd,
+        finishRegionIndex: waveform.state.regions.findIndex(
+          (r) => r.start >= pendingAction.end
+        ), // TODO: optimize
         overlaps: getOverlaps(
           {
             start: Math.min(clipToStretch.start, stretchEnd),

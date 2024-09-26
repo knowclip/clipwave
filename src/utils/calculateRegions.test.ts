@@ -1,9 +1,11 @@
+import { describe, it, expect } from 'vitest'
 import {
   calculateRegions,
   newRegionsWithItems,
   recalculateRegions,
   sortWaveformItems
 } from './calculateRegions'
+import { WaveformItem } from '../WaveformState'
 
 const item = (id: string, start: number, end: number) => ({
   id,
@@ -115,13 +117,41 @@ describe('newRegionsWithItem', () => {
       endRegion(50, 10000)
     ])
   })
+
+  it('works with items ending or starting at the same time', () => {
+    const end = 10000
+    const items = [
+      item('a', 10, 20),
+      item('b', 40, 50),
+      item('c', 15, 50),
+      item('d', 60, 70),
+      item('e', 60, 65),
+      item('f', 80, 90),
+      item('g', 80, 90)
+    ]
+    const { regions: newRegions } = calculateRegions(items, end)
+
+    expect(newRegions).toEqual([
+      region(0),
+      region(10, 'a'),
+      region(15, 'a', 'c'),
+      region(20, 'c'),
+      region(40, 'b', 'c'),
+      region(50),
+      region(60, 'd', 'e'),
+      region(65, 'd'),
+      region(70),
+      region(80, 'f', 'g'),
+      endRegion(90, 10000)
+    ])
+  })
 })
 
 describe('recalculateRegions', () => {
   it('works with last item delete', () => {
     const a = item('a', 10, 20)
     const b = item('b', 40, 50)
-    const map = {
+    const map: Record<string, WaveformItem> = {
       a,
       b
     }
@@ -142,7 +172,7 @@ describe('recalculateRegions', () => {
 
   it('works with lone item delete', () => {
     const a = item('a', 10, 20)
-    const map = {
+    const map: Record<string, WaveformItem> = {
       a
     }
     const items = [a]
@@ -160,7 +190,7 @@ describe('recalculateRegions', () => {
     const a = item('a', 10, 20)
     const b = item('b', 40, 50)
     const c = item('c', 5, 45)
-    const map = { a, b, c }
+    const map: Record<string, WaveformItem> = { a, b, c }
     const items = sortWaveformItems([a, b, c])
     const end = 10000
 
@@ -182,7 +212,7 @@ describe('recalculateRegions', () => {
   it('works with last item stretch, no new item overlaps', () => {
     const a = item('a', 10, 20)
     const b = item('b', 40, 50)
-    const map = { a, b }
+    const map: Record<string, WaveformItem> = { a, b }
     const items = [a, b]
     const end = 10000
     const { regions } = calculateRegions(items, end)
@@ -206,7 +236,7 @@ describe('recalculateRegions', () => {
     const b = item('b', 40, 50)
     const c = item('c', 5, 45)
     const items = sortWaveformItems([a, b, c])
-    const map = { a, b, c }
+    const map: Record<string, WaveformItem> = { a, b, c }
     const end = 10000
 
     const newItem = item('c', 15, 45)
@@ -242,7 +272,7 @@ describe('recalculateRegions', () => {
     const b = item('b', 15, 45)
     const c = item('c', 40, 50)
     const items = [a, b, c]
-    const map = { a, b, c }
+    const map: Record<string, WaveformItem> = { a, b, c }
     const end = 10000
 
     const newItem = item('b', 17, 45)
@@ -269,7 +299,7 @@ describe('recalculateRegions', () => {
     const b = item('b', 20, 30)
     const c = item('c', 50, 60)
     const items = [a, b, c]
-    const map = { a, b, c }
+    const map: Record<string, WaveformItem> = { a, b, c }
     const end = 10000
 
     const newItem = item('a', 55, 65)
@@ -296,7 +326,7 @@ describe('recalculateRegions', () => {
     const b = item('b', 30, 40)
     const c = item('c', 50, 60)
     const items = [a, b, c]
-    const map = { a, b, c }
+    const map: Record<string, WaveformItem> = { a, b, c }
     const end = 10000
 
     const { regions } = calculateRegions(items, end)
@@ -322,7 +352,7 @@ describe('recalculateRegions', () => {
     const b = item('b', 40, 50)
     const c = item('c', 5, 45)
     const items = sortWaveformItems([a, b, c])
-    const map = { a, b, c }
+    const map: Record<string, WaveformItem> = { a, b, c }
     const end = 10000
 
     const { regions } = calculateRegions(items, end)

@@ -23,8 +23,8 @@ function getClipClickDataProps(
   end: number,
   regionIndex: number,
   isHighlighted: boolean
-): ClipClickDataProps {
-  const props = {
+) {
+  const props: ClipClickDataProps = {
     'data-clip-id': id,
     'data-clip-start': start,
     'data-clip-end': end,
@@ -77,6 +77,7 @@ function ClipsBase({
       }[]
       secondary: SecondaryClipDisplaySpecs[]
     } = { primary: [{ clips: [], slots: [] }], secondary: [] }
+    const renderedClips = new Set<string>()
     return reduceOnVisibleRegions((acc, region, regionIndex) => {
       const { primary, secondary } = acc
       const lastGroup: TouchingClipsGroup = primary[primary.length - 1]
@@ -100,7 +101,11 @@ function ClipsBase({
 
       const startingNow = region.itemIds.flatMap((id) => {
         const clip = getItem(id)
-        return clip && region.start === clip.start ? clip : []
+        if (!clip) return []
+
+        const wasRendered = renderedClips.has(clip.id)
+        renderedClips.add(clip.id)
+        return wasRendered ? [] : [clip]
       })
 
       startingNow.forEach((clip) => {

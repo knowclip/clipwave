@@ -1,9 +1,9 @@
 import React from 'react'
-import cn from 'classnames'
+import cn from 'clsx'
 import { getClipRectProps } from './getClipRectProps'
 import { msToPixels, SELECTION_BORDER_MILLISECONDS } from './utils'
 import { PrimaryClip, WaveformRegion } from './WaveformState'
-import css from './Waveform.module.scss'
+import css from './Waveform.module.css'
 import { ClipClickDataProps } from './WaveformClips'
 
 export const WaveformClip = React.memo(WaveformClipBase)

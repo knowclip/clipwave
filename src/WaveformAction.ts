@@ -22,6 +22,7 @@ export type WaveformAction =
       type: 'SET_REGIONS'
       regions: WaveformRegion[]
       newSelectionRegion?: number
+      // TODO: investigate renaming to "candidate"
       newSelectionItemId?: WaveformItem['id']
     }
 

@@ -39,9 +39,10 @@ export function useWaveform(
     },
     [getItemFn]
   )
-  const getItemDangerously = useCallback((id: string) => getItemFn(id)!, [
-    getItemFn
-  ])
+  const getItemDangerously = useCallback(
+    (id: string) => getItemFn(id)!,
+    [getItemFn]
+  )
   const svgRef = useRef<SVGSVGElement>(null)
   const [state, dispatch] = useReducer(waveformStateReducer, blankState)
   const selection = useMemo(() => {
@@ -304,6 +305,10 @@ export function useWaveform(
   const reduceOnVisibleRegions: ReduceOnVisibleRegions = useCallback(
     (callback, initialAccumulator) => {
       const { viewBoxStartMs, pixelsPerSecond } = state
+      // const viewBoxEndMs = viewBoxStartMs + pixelsToMs(
+      //   MAX_WAVEFORM_VIEWPORT_WIDTH,
+      //   pixelsPerSecond
+      // )
 
       return reduceWhile(
         regions,

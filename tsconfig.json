@@ -15,7 +15,6 @@
     "noImplicitThis": true,
     "noImplicitAny": true,
     "strictNullChecks": true,
-    "suppressImplicitAnyIndexErrors": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "allowSyntheticDefaultImports": true,
@@ -31,7 +30,8 @@
     "noEmit": true
   },
   "include": [
-    "src"
+    "src",
+    "node_modules/microbundle/index.d.ts"
   ],
   "exclude": [
     "node_modules",

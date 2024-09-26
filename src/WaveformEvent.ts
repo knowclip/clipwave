@@ -60,7 +60,9 @@ export type ClipStretch = {
   start: number
   end: number
   clipId: string
-  regionIndex: number
+  originRegionIndex: number
+  /** -1 if not yet finished */
+  finishRegionIndex: number
   waveformState: WaveformState
   timeStamp: number
   overlaps: WaveformItem['id'][]
