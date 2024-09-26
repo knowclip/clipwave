@@ -24,7 +24,7 @@ import {
   ClipStretch
 } from './WaveformEvent'
 import { WaveformItem } from './WaveformState'
-import css from './Waveform.module.scss'
+import css from './Waveform.module.css'
 import { getClipRectProps } from './getClipRectProps'
 import { Clips } from './WaveformClips'
 import { getFinalWaveformDragAction } from './getFinalWaveformDragAction'
@@ -63,12 +63,8 @@ export default function Waveform({
   renderPrimaryClip?: RenderPrimaryClip
   renderSecondaryClip?: RenderSecondaryClip
 } & WaveformEventHandlers) {
-  const {
-    viewBoxStartMs,
-    durationSeconds,
-    pixelsPerSecond,
-    pendingAction
-  } = waveform.state
+  const { viewBoxStartMs, durationSeconds, pixelsPerSecond, pendingAction } =
+    waveform.state
   const { handleMouseDown, pendingActionRef } = useWaveformMouseActions({
     waveform,
     playerRef,
@@ -300,44 +296,43 @@ function useWaveformMouseActions({
     state.pixelsPerSecond
   ])
 
-  const handleMouseDown: EventHandler<
-    React.MouseEvent<SVGElement>
-  > = useCallback(
-    (e) => {
-      e.preventDefault()
+  const handleMouseDown: EventHandler<React.MouseEvent<SVGElement>> =
+    useCallback(
+      (e) => {
+        e.preventDefault()
 
-      const msAtMouse = waveformTimeAtMousePosition(
-        e,
-        e.currentTarget,
+        const msAtMouse = waveformTimeAtMousePosition(
+          e,
+          e.currentTarget,
+          state.viewBoxStartMs,
+          pixelsPerSecond
+        )
+        const ms = Math.min(durationMilliseconds, msAtMouse)
+        const waveformMousedown = new WaveformMousedownEvent(e, ms)
+        document.dispatchEvent(waveformMousedown)
+        const { dataset } = e.target as SVGGElement | SVGRectElement
+
+        const mousedownAction = getWaveformMousedownAction(
+          dataset,
+          waveformMousedown,
+          waveform
+        )
+        if (mousedownAction)
+          dispatch({
+            type: 'START_WAVEFORM_MOUSE_ACTION',
+            action: mousedownAction
+          })
+
+        mouseDown.current = waveformMousedown
+      },
+      [
         state.viewBoxStartMs,
-        pixelsPerSecond
-      )
-      const ms = Math.min(durationMilliseconds, msAtMouse)
-      const waveformMousedown = new WaveformMousedownEvent(e, ms)
-      document.dispatchEvent(waveformMousedown)
-      const { dataset } = e.target as SVGGElement | SVGRectElement
-
-      const mousedownAction = getWaveformMousedownAction(
-        dataset,
-        waveformMousedown,
-        waveform
-      )
-      if (mousedownAction)
-        dispatch({
-          type: 'START_WAVEFORM_MOUSE_ACTION',
-          action: mousedownAction
-        })
-
-      mouseDown.current = waveformMousedown
-    },
-    [
-      state.viewBoxStartMs,
-      pixelsPerSecond,
-      durationMilliseconds,
-      waveform,
-      dispatch
-    ]
-  )
+        pixelsPerSecond,
+        durationMilliseconds,
+        waveform,
+        dispatch
+      ]
+    )
 
   useEffect(() => {
     const handleMouseUps = (e: MouseEvent) => {

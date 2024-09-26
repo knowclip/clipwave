@@ -61,6 +61,7 @@ export type ClipStretch = {
   end: number
   clipId: string
   originRegionIndex: number
+  /** -1 if not yet finished */
   finishRegionIndex: number
   waveformState: WaveformState
   timeStamp: number

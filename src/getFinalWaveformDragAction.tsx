@@ -3,7 +3,6 @@ import { WaveformInterface } from './useWaveform'
 import { WaveformGesture } from './WaveformEvent'
 import { bound } from './utils/bound'
 import { getRegionEnd, overlap } from './utils/getRegionEnd'
-import { WaveformRegion } from './WaveformState'
 
 export function getFinalWaveformDragAction(
   pendingAction: WaveformGesture,

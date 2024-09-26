@@ -41,20 +41,24 @@ export const setCursorXAfterZoom = (
   }
 }
 
-export const syncCursor = (
-  pixelsPerSecond: number,
-  playerRef: MutableRefObject<HTMLVideoElement | HTMLAudioElement | null>
-) => (_increment: number) => {
-  const cursor: SVGLineElement | null = document.querySelector('.cursor')
-  if (cursor) {
-    const player = playerRef.current
-    const string = player ? String(player.currentTime * pixelsPerSecond) : '0'
-    cursor.setAttribute('x1', string)
-    cursor.setAttribute('x2', string)
-  }
+export const syncCursor =
+  (
+    pixelsPerSecond: number,
+    playerRef: MutableRefObject<HTMLVideoElement | HTMLAudioElement | null>
+  ) =>
+  (_increment: number) => {
+    const cursor: SVGLineElement | null = document.querySelector('.cursor')
+    if (cursor) {
+      const player = playerRef.current
+      const string = player ? String(player.currentTime * pixelsPerSecond) : '0'
+      cursor.setAttribute('x1', string)
+      cursor.setAttribute('x2', string)
+    }
 
-  animationFrame = requestAnimationFrame(syncCursor(pixelsPerSecond, playerRef))
-}
+    animationFrame = requestAnimationFrame(
+      syncCursor(pixelsPerSecond, playerRef)
+    )
+  }
 
 let animationFrame: number
 

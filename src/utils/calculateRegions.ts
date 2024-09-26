@@ -92,10 +92,13 @@ export function recalculateRegions(
   // currentSelection?: WaveformState['selection'],
   newSelectionMs?: number
 ): { regions: WaveformRegion[]; newSelectionRegion?: number } {
-  const idsToIndexes = adjacentUpdates.reduce((map, update, i) => {
-    map[getItemId(update)] = i
-    return map
-  }, {} as Record<WaveformItem['id'], number>)
+  const idsToIndexes = adjacentUpdates.reduce(
+    (map, update, i) => {
+      map[getItemId(update)] = i
+      return map
+    },
+    {} as Record<WaveformItem['id'], number>
+  )
   const getUpdate = (id: WaveformItem['id']): WaveformItemUpdate | undefined =>
     adjacentUpdates[idsToIndexes[id]]
   const validAdjacentUpdates = adjacentUpdates.filter((update) => {
@@ -169,7 +172,7 @@ export function recalculateRegions(
       const item =
         update && update.type === 'DELETE'
           ? null
-          : update?.newItem ?? getItem(id)
+          : (update?.newItem ?? getItem(id))
       if (item && !itemsToBeIncluded.some((i) => i.id === item.id))
         itemsToBeIncluded.push(item)
     }

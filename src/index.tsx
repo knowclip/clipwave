@@ -19,4 +19,4 @@ export type {
   SecondaryClipDisplayProps
 } from './ClipDisplayProps'
 
-export { default as css } from './Waveform.module.scss'
+export { default as css } from './Waveform.module.css'
